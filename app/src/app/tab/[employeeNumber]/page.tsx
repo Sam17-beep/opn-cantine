@@ -89,9 +89,6 @@ export default function TabPage({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [employeeNumber]);
 
-  useEffect(() => {
-    scanInputRef.current?.focus();
-  }, []);
   // Handle product barcode scan
   const handleProductScan = useCallback(
     async (barcode: string) => {
@@ -395,6 +392,7 @@ export default function TabPage({
           w={0}
           overflow="hidden"
           inputMode="none"
+          autoFocus
         />
 
         {/* Fixed height container for scan feedback and products list to prevent UI shifting */}
