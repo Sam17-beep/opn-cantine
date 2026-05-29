@@ -67,6 +67,8 @@ export default function TabPage({
   const [resetOpen, setResetOpen] = useState(false);
   const [saveOpen, setSaveOpen] = useState(false);
   const [unknownOpen, setUnknownOpen] = useState(false);
+  const [editProduct, setEditProduct] = useState<ScannedProduct | null>(null);
+  const [editQty, setEditQty] = useState(0);
   const [countdown, setCountdown] = useState(5);
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
@@ -304,17 +306,15 @@ export default function TabPage({
   // Keep scanner input focused when no modal is open
   useEffect(() => {
     const refocus = () => {
-      if (!saveOpen && !resetOpen && !unknownOpen) {
+      if (!saveOpen && !resetOpen && !unknownOpen && !editProduct) {
         scanInputRef.current?.focus();
       }
     };
     document.addEventListener('click', refocus);
-    document.addEventListener('touchstart', refocus);
     return () => {
       document.removeEventListener('click', refocus);
-      document.removeEventListener('touchstart', refocus);
     };
-  }, [saveOpen, resetOpen, unknownOpen]);
+  }, [saveOpen, resetOpen, unknownOpen, editProduct]);
 
   const hasPending = pendingTotal !== 0;
   const projectedTab = employee ? employee.tab + pendingTotal : 0;
@@ -447,6 +447,12 @@ export default function TabPage({
                 justify="space-between"
                 borderRadius="md"
                 bg="bg.subtle"
+                cursor="pointer"
+                _hover={{ bg: 'bg.muted' }}
+                onClick={() => {
+                  setEditProduct(p);
+                  setEditQty(p.qty);
+                }}
               >
                 <Text fontSize="sm" fontWeight="600">
                   {p.name} {p.qty > 1 ? `x${p.qty}` : ''}
@@ -721,6 +727,90 @@ export default function TabPage({
               >
                 Compris
               </Button>
+            </DialogFooter>
+          </DialogContent>
+        </DialogPositioner>
+      </DialogRoot>
+
+      {/* Edit cart item modal */}
+      <DialogRoot
+        open={!!editProduct}
+        onOpenChange={(e) => { if (!e.open) setEditProduct(null); }}
+        placement="center"
+        size="sm"
+      >
+        <DialogBackdrop />
+        <DialogPositioner>
+          <DialogContent p={6}>
+            <DialogHeader pb={3}>
+              <DialogTitle fontSize="xl" fontWeight="700">
+                {editProduct?.name}
+              </DialogTitle>
+            </DialogHeader>
+            <DialogBody>
+              <Input
+                type="number"
+                min={1}
+                value={editQty}
+                onChange={(e) => {
+                  const val = parseInt(e.target.value, 10);
+                  if (!isNaN(val) && val >= 1) setEditQty(val);
+                }}
+                fontSize="3xl"
+                fontWeight="800"
+                textAlign="center"
+                py={6}
+                h="auto"
+                autoFocus
+              />
+            </DialogBody>
+            <DialogFooter pt={5}>
+              <VStack gap={3} w="full">
+                <Button
+                  w="full"
+                  colorPalette="red"
+                  variant="outline"
+                  size="lg"
+                  onClick={() => {
+                    if (!editProduct) return;
+                    setPendingTotal((prev) => prev - editProduct.qty * editProduct.price);
+                    setScannedProducts((prev) =>
+                      prev.filter((p) => p.barcode !== editProduct.barcode)
+                    );
+                    setEditProduct(null);
+                  }}
+                >
+                  Supprimer
+                </Button>
+                <HStack gap={3} w="full">
+                  <Button
+                    flex={1}
+                    variant="outline"
+                    size="lg"
+                    onClick={() => setEditProduct(null)}
+                  >
+                    Annuler
+                  </Button>
+                  <Button
+                    flex={1}
+                    colorPalette="gray"
+                    size="lg"
+                    onClick={() => {
+                      if (!editProduct) return;
+                      const delta = editQty - editProduct.qty;
+                      setPendingTotal((prev) => prev + delta * editProduct.price);
+                      setScannedProducts((prev) =>
+                        prev.map((p) =>
+                          p.barcode === editProduct.barcode ? { ...p, qty: editQty } : p
+                        )
+                      );
+                      setEditProduct(null);
+                    }}
+                  >
+                    Confirmer
+                  </Button>
+                </HStack>
+              </VStack>
             </DialogFooter>
           </DialogContent>
         </DialogPositioner>
