@@ -50,12 +50,7 @@ export default function AdminPage() {
 
   useEffect(() => {
     setMounted(true);
-    fetch('/api/admin/check').then((res) => {
-      if (res.ok) setAuthenticated(true);
-      setCheckingAuth(false);
-    }).catch(() => {
-      setCheckingAuth(false);
-    });
+    setCheckingAuth(false);
   }, []);
 
   const fetchEmployees = async () => {
