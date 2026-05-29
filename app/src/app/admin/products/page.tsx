@@ -430,6 +430,7 @@ export default function AdminProductsPage() {
             fontSize={{ base: 'lg', md: 'xl' }}
             py={6}
             h="auto"
+            inputMode="none"
             autoFocus
           />
         </Box>

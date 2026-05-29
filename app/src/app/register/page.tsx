@@ -1,11 +1,16 @@
 'use client';
 
 import { Button, Flex, Heading, Input, Text, VStack } from '@chakra-ui/react';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { Suspense, useState } from 'react';
 
 function RegisterForm() {
+  const searchParams = useSearchParams();
   const router = useRouter();
+
+  // Card number from the URL (passed by the scanner on the main page). Used as
+  // the DB identifier so future card scans can find this employee. Never shown.
+  const cardNumber = searchParams.get('employeeNumber') || '';
 
   const [employeeNumber, setEmployeeNumber] = useState('');
   const [initialTab, setInitialTab] = useState('');
@@ -32,12 +37,19 @@ function RegisterForm() {
     setLoading(true);
     setError('');
 
+    // If a card number was passed via URL, use it as the DB identifier so the
+    // card scanner can find this employee on future scans. The typed employee
+    // number is stored as the display name. Without a card number (manual
+    // registration), the typed employee number is used as both.
+    const identifier = cardNumber || employeeNumber.trim();
+
     try {
       const res = await fetch('/api/employees', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          employeeNumber: employeeNumber.trim(),
+          employeeNumber: identifier,
+          fullName: employeeNumber.trim(),
           initialTab: parsedInitialTab,
         }),
       });
@@ -50,7 +62,7 @@ function RegisterForm() {
         return;
       }
 
-      router.push(`/tab/${encodeURIComponent(employeeNumber.trim())}`);
+      router.push(`/tab/${encodeURIComponent(identifier)}`);
     } catch {
       setError('Erreur de connexion. Réessayez.');
       setLoading(false);
@@ -118,7 +130,6 @@ function RegisterForm() {
             value={initialTab}
             onChange={e => {
               const val = e.target.value;
-              // Allow only digits and a single decimal point with up to 2 decimal places
               if (val === '' || /^\d+(\.\d{0,2})?$/.test(val)) {
                 setInitialTab(val);
                 setError('');

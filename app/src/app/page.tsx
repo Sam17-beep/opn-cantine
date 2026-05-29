@@ -150,7 +150,7 @@ export default function Home() {
           Cantine
         </Heading>
         <Text color="fg.muted" fontSize={{ base: 'lg', md: 'xl' }}>
-          {isSearchMode ? 'Recherchez votre nom' : 'Scannez votre carte'}
+          {isSearchMode ? "Recherchez votre numéro d'employé" : 'Scannez votre carte'}
         </Text>
       </VStack>
 
@@ -224,7 +224,7 @@ export default function Home() {
       ) : (
         <VStack w="full" maxW="md" gap={4}>
           <Input
-            placeholder="Tapez votre nom..."
+            placeholder="Tapez votre numéro d'employé..."
             size="lg"
             value={searchQuery}
             autoFocus

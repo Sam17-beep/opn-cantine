@@ -6,7 +6,7 @@ const service = new EmployeeApplicationService(employeeRepository);
 
 export async function POST(request: NextRequest) {
   const body = await request.json();
-  const { employeeNumber, initialTab } = body;
+  const { employeeNumber, fullName, initialTab } = body;
 
   if (!employeeNumber) {
     return NextResponse.json(
@@ -20,8 +20,11 @@ export async function POST(request: NextRequest) {
       ? initialTab
       : 0;
 
+  const resolvedFullName =
+    typeof fullName === 'string' && fullName.trim() ? fullName.trim() : employeeNumber;
+
   try {
-    const employee = await service.create(employeeNumber, parsedInitialTab);
+    const employee = await service.create(employeeNumber, resolvedFullName, parsedInitialTab);
     return NextResponse.json(employee, { status: 201 });
   } catch (e: unknown) {
     const message = e instanceof Error ? e.message : 'Unknown error';
