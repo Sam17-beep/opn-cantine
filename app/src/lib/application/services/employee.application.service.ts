@@ -12,13 +12,13 @@ export class EmployeeApplicationService {
     return this.employeeRepository.searchByName(query);
   }
 
-  async create(employeeNumber: string, fullName: string) {
+  async create(employeeNumber: string, initialTab: number = 0) {
     const existing =
       await this.employeeRepository.findByEmployeeNumber(employeeNumber);
     if (existing) {
       throw new Error('Employee already exists');
     }
-    const employee = EmployeeEntity.create(employeeNumber, fullName);
+    const employee = EmployeeEntity.create(employeeNumber, employeeNumber, initialTab);
     return this.employeeRepository.save(employee);
   }
 
