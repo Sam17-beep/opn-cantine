@@ -101,7 +101,6 @@ function RegisterForm() {
             fontWeight="500"
             py={8}
             h="auto"
-            autoFocus
           />
         </VStack>
 
