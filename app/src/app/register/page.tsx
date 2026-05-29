@@ -1,33 +1,31 @@
 'use client';
 
 import { Button, Flex, Heading, Input, Text, VStack } from '@chakra-ui/react';
-import { useRouter, useSearchParams } from 'next/navigation';
+import { useRouter } from 'next/navigation';
 import { Suspense, useState } from 'react';
 
 function RegisterForm() {
-  const searchParams = useSearchParams();
   const router = useRouter();
 
-  const [employeeNumber, setEmployeeNumber] = useState(
-    searchParams.get('employeeNumber') || ''
-  );
-  const [fullName, setFullName] = useState('');
+  const [employeeNumber, setEmployeeNumber] = useState('');
+  const [initialTab, setInitialTab] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
 
   const handleSubmit = async () => {
     if (!employeeNumber.trim()) {
-      setError("Le numéro de carte est requis.");
+      setError("Le numéro d'employé est requis.");
       return;
     }
 
-    if (employeeNumber.trim().length < 4) {
-      setError("Le numéro de carte doit contenir au moins 4 caractères.");
+    if (!/^[a-zA-Z0-9]+$/.test(employeeNumber.trim())) {
+      setError("Le numéro d'employé ne doit contenir que des lettres et des chiffres.");
       return;
     }
 
-    if (!fullName.trim()) {
-      setError('Le nom complet est requis.');
+    const parsedInitialTab = initialTab.trim() ? parseFloat(initialTab.trim()) : 0;
+    if (isNaN(parsedInitialTab) || parsedInitialTab < 0) {
+      setError('Le solde initial doit être un nombre positif.');
       return;
     }
 
@@ -40,7 +38,7 @@ function RegisterForm() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           employeeNumber: employeeNumber.trim(),
-          fullName: fullName.trim(),
+          initialTab: parsedInitialTab,
         }),
       });
 
@@ -89,16 +87,16 @@ function RegisterForm() {
             fontWeight="500"
             color="fg.muted"
           >
-            Numéro de carte
+            Numéro d&apos;employé
           </Text>
           <Input
-            placeholder="Ex: 12345"
+            placeholder="Ex: aa0000000"
             value={employeeNumber}
-            minLength={4}
             onChange={e => {
               setEmployeeNumber(e.target.value);
               setError('');
             }}
+            onKeyDown={e => e.key === 'Enter' && handleSubmit()}
             fontSize={{ base: 'xl', md: '2xl' }}
             fontWeight="500"
             py={8}
@@ -112,21 +110,25 @@ function RegisterForm() {
             fontWeight="500"
             color="fg.muted"
           >
-            Nom complet
+            Solde initial (optionnel)
           </Text>
           <Input
-            placeholder="Ex: Jean Tremblay"
-            value={fullName}
+            placeholder="Ex: 12.50"
+            inputMode="decimal"
+            value={initialTab}
             onChange={e => {
-              setFullName(e.target.value);
-              setError('');
+              const val = e.target.value;
+              // Allow only digits and a single decimal point with up to 2 decimal places
+              if (val === '' || /^\d+(\.\d{0,2})?$/.test(val)) {
+                setInitialTab(val);
+                setError('');
+              }
             }}
             onKeyDown={e => e.key === 'Enter' && handleSubmit()}
             fontSize={{ base: 'xl', md: '2xl' }}
             fontWeight="500"
             py={8}
             h="auto"
-            autoFocus
           />
         </VStack>
 
