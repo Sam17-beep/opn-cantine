@@ -15,7 +15,7 @@ export class EmployeeEntity implements Employee {
 
   private validate(): void {
     if (!this.employeeNumber || this.employeeNumber.trim().length === 0) {
-      throw new Error('Card number is required');
+      throw new Error('Employee number is required');
     }
 
     if (!this.fullName || this.fullName.trim().length === 0) {
@@ -23,7 +23,7 @@ export class EmployeeEntity implements Employee {
     }
   }
 
-  static create(employeeNumber: string, fullName: string): EmployeeEntity {
-    return new EmployeeEntity(employeeNumber.trim(), fullName.trim(), 0);
+  static create(employeeNumber: string, fullName: string, initialTab: number = 0): EmployeeEntity {
+    return new EmployeeEntity(employeeNumber.trim(), fullName.trim(), initialTab);
   }
 }
