@@ -88,7 +88,7 @@ function RegisterForm() {
           Nouveau compte
         </Heading>
         <Text color="fg.muted" fontSize={{ base: 'lg', md: 'xl' }}>
-          Créez votre ardoise cantine
+          Créez votre compte
         </Text>
       </VStack>
 

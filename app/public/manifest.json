@@ -1,7 +1,7 @@
 {
   "name": "Cantine",
   "short_name": "Cantine",
-  "description": "Gestion des ardoises cantine",
+  "description": "Gestion de cantine",
   "start_url": "/",
   "display": "standalone",
   "background_color": "#ffffff",
