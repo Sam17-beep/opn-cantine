@@ -15,7 +15,7 @@ const geistMono = Geist_Mono({
 
 export const metadata: Metadata = {
   title: 'Cantine',
-  description: 'Gestion des ardoises cantine',
+  description: 'Gestion de cantine',
 };
 
 export default function RootLayout({
