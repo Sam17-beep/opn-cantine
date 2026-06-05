@@ -27,7 +27,6 @@ export function useSaveFlow({
   unknownOpen,
   editProduct,
 }: Params) {
-  console.log('[useSaveFlow] render', { scannedProducts: scannedProducts.length, saveOpen: undefined, resetOpen, unknownOpen, editProduct: !!editProduct });
   const [saveOpen, setSaveOpen] = useState(false);
   const [countdown, setCountdown] = useState(5);
 
@@ -133,14 +132,9 @@ export function useSaveFlow({
   useEffect(() => {
     if (inactivityTimerRef.current) clearTimeout(inactivityTimerRef.current);
 
-    if (saveOpen || resetOpen || unknownOpen || editProduct) {
-      console.log('[inactivity] timer paused — modal open');
-      return;
-    }
+    if (saveOpen || resetOpen || unknownOpen || editProduct) return;
 
-    console.log('[inactivity] timer started (15 s)');
     inactivityTimerRef.current = setTimeout(() => {
-      console.log('[inactivity] fired — calling handleSave');
       handleSaveRef.current();
     }, INACTIVITY_TIMEOUT_MS);
 
