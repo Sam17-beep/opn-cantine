@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState, useRef, useCallback, use } from 'react';
+import { useEffect, useState, use } from 'react';
 import { useRouter } from 'next/navigation';
 import {
   Box,
@@ -13,35 +13,38 @@ import {
   Flex,
   Separator,
   IconButton,
-  DialogRoot,
-  DialogPositioner,
-  DialogContent,
-  DialogHeader,
-  DialogBody,
-  DialogFooter,
-  DialogBackdrop,
-  DialogTitle,
-  ProgressRoot,
-  ProgressTrack,
-  ProgressRange,
 } from '@chakra-ui/react';
+import { useCart } from './hooks/useCart';
+import { useSaveFlow } from './hooks/useSaveFlow';
+import { SaveModal } from './components/SaveModal';
+import { ResetModal } from './components/ResetModal';
+import { EditProductModal } from './components/EditProductModal';
+import { UnknownProductModal } from './components/UnknownProductModal';
+import type { Employee, ScannedProduct } from './types';
 
-interface Employee {
-  employeeNumber: string;
-  fullName: string;
-  tab: number;
+function getBalanceColor(value: number) {
+  const clamped = Math.max(0, Math.min(value, 80));
+  const ratio = clamped / 80;
+
+  // green (34,197,94) → yellow (234,179,8) → red (239,68,68)
+  let r: number, g: number, b: number;
+  if (ratio <= 0.5) {
+    const t = ratio * 2;
+    r = Math.round(34 + (234 - 34) * t);
+    g = Math.round(197 + (179 - 197) * t);
+    b = Math.round(94 + (8 - 94) * t);
+  } else {
+    const t = (ratio - 0.5) * 2;
+    r = Math.round(234 + (239 - 234) * t);
+    g = Math.round(179 + (68 - 179) * t);
+    b = Math.round(8 + (68 - 8) * t);
+  }
+
+  return {
+    bg: `rgba(${r}, ${g}, ${b}, 0.1)`,
+    fg: `rgb(${r}, ${g}, ${b})`,
+  };
 }
-
-interface ScannedProduct {
-  barcode: string;
-  name: string;
-  price: number;
-  qty: number;
-}
-
-const RAPID_INPUT_THRESHOLD_MS = 80;
-const AUTO_SUBMIT_DELAY_MS = 300;
-const MIN_BARCODE_LENGTH = 4;
 
 export default function TabPage({
   params,
@@ -50,216 +53,42 @@ export default function TabPage({
 }) {
   const { employeeNumber } = use(params);
   const router = useRouter();
+
   const [employee, setEmployee] = useState<Employee | null>(null);
   const [loading, setLoading] = useState(false);
-  const [pendingTotal, setPendingTotal] = useState(0);
-
-  // Barcode scanner state
-  const [scannedProducts, setScannedProducts] = useState<ScannedProduct[]>([]);
-  const [scanFeedback, setScanFeedback] = useState('');
-  const scanInputRef = useRef<HTMLInputElement>(null);
-  const [scanValue, setScanValue] = useState('');
-  const lastScanKeystrokeRef = useRef(0);
-  const rapidScanCountRef = useRef(0);
-  const autoScanTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-
-  // Modal state
   const [resetOpen, setResetOpen] = useState(false);
-  const [saveOpen, setSaveOpen] = useState(false);
   const [unknownOpen, setUnknownOpen] = useState(false);
   const [editProduct, setEditProduct] = useState<ScannedProduct | null>(null);
   const [editQty, setEditQty] = useState(0);
-  const [countdown, setCountdown] = useState(5);
-  const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
-  const fetchEmployee = async () => {
-    const res = await fetch(
-      `/api/employees/lookup?employeeNumber=${encodeURIComponent(employeeNumber)}`
-    );
-    const data = await res.json();
-    if (data.found) {
-      setEmployee(data.employee);
-    } else {
-      router.push('/');
-    }
-  };
+  const cart = useCart(setUnknownOpen);
+
+  const save = useSaveFlow({
+    employee,
+    employeeNumber,
+    pendingTotal: cart.pendingTotal,
+    scannedProducts: cart.scannedProducts,
+    setLoading,
+    router,
+    resetOpen,
+    unknownOpen,
+    editProduct,
+  });
 
   useEffect(() => {
-    fetchEmployee();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [employeeNumber]);
-
-  // Handle product barcode scan
-  const handleProductScan = useCallback(
-    async (barcode: string) => {
-      const value = barcode.trim();
-      if (!value || value.length < MIN_BARCODE_LENGTH) return;
-
-      try {
-        const res = await fetch(
-          `/api/products/lookup?barcode=${encodeURIComponent(value)}`
-        );
-        const data = await res.json();
-
-        if (!data.found) {
-          setUnknownOpen(true);
-          return;
-        }
-
-        const product = data.product;
-
-        if (product.quantity <= 0) {
-          setScanFeedback(`${product.name} — Rupture de stock`);
-          setTimeout(() => setScanFeedback(''), 3000);
-          return;
-        }
-
-        // Add to pending total
-        setPendingTotal((prev) => prev + product.price);
-
-        // Track scanned product for stock decrement at save time
-        setScannedProducts((prev) => {
-          const existing = prev.find((p) => p.barcode === value);
-          if (existing) {
-            return prev.map((p) =>
-              p.barcode === value ? { ...p, qty: p.qty + 1 } : p
-            );
-          }
-          return [
-            ...prev,
-            { barcode: value, name: product.name, price: product.price, qty: 1 },
-          ];
-        });
-
-        setScanFeedback(`${product.name} — ${product.price.toFixed(2)}$`);
-        setTimeout(() => setScanFeedback(''), 3000);
-      } catch {
-        setScanFeedback('Erreur de connexion');
-        setTimeout(() => setScanFeedback(''), 3000);
-      }
-
-      setScanValue('');
-    },
-    []
-  );
-
-  const lastAddRef = useRef(0);
-  const addCoffee = () => {
-    const now = Date.now();
-    if (now - lastAddRef.current < 300) return;
-    lastAddRef.current = now;
-
-    setPendingTotal((prev) => prev + 1);
-
-    setScannedProducts((prev) => {
-      const existing = prev.find((p) => p.barcode === '_cafe_');
-      if (existing) {
-        return prev.map((p) =>
-          p.barcode === '_cafe_' ? { ...p, qty: p.qty + 1 } : p
-        );
-      }
-      return [
-        ...prev,
-        { barcode: '_cafe_', name: 'Café', price: 1.00, qty: 1 },
-      ];
-    });
-  };
-
-  const doSave = useCallback(async () => {
-    if (!employee || pendingTotal === 0) return;
-
-    setLoading(true);
-    const res = await fetch('/api/employees/tab', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ employeeNumber, amount: pendingTotal }),
-    });
-
-    // Decrement product stock for scanned items
-    if (res.ok && scannedProducts.length > 0) {
-      await fetch('/api/products/decrement', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          items: scannedProducts.map((p) => ({
-            barcode: p.barcode,
-            quantity: p.qty,
-          })),
-        }),
-      });
-
-      // Log the transaction
-      await fetch('/api/transactions', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          employeeNumber,
-          totalAmount: pendingTotal,
-          items: scannedProducts.map((p) => ({
-            barcode: p.barcode,
-            name: p.name,
-            price: p.price,
-            quantity: p.qty,
-          })),
-        }),
-      }).catch(console.error); // Fire and forget so we don't block UI if it fails
-    }
-
-    if (res.ok) {
-      router.push('/');
-    }
-    setLoading(false);
-  }, [employee, employeeNumber, pendingTotal, scannedProducts, router]);
-
-  const startSaveCountdown = () => {
-    setCountdown(5);
-    setSaveOpen(true);
-  };
-
-  const cancelSave = () => {
-    if (timerRef.current) {
-      clearInterval(timerRef.current);
-      timerRef.current = null;
-    }
-    setSaveOpen(false);
-    setCountdown(5);
-  };
-
-  // Countdown effect
-  useEffect(() => {
-    if (!saveOpen) return;
-
-    timerRef.current = setInterval(() => {
-      setCountdown((prev) => prev - 1);
-    }, 1000);
-
-    return () => {
-      if (timerRef.current) {
-        clearInterval(timerRef.current);
-        timerRef.current = null;
+    const fetchEmployee = async () => {
+      const res = await fetch(
+        `/api/employees/lookup?employeeNumber=${encodeURIComponent(employeeNumber)}`
+      );
+      const data = await res.json();
+      if (data.found) {
+        setEmployee(data.employee);
+      } else {
+        router.push('/');
       }
     };
-  }, [saveOpen]);
-
-  // When countdown reaches 0, save
-  useEffect(() => {
-    if (countdown <= 0 && saveOpen) {
-      cancelSave();
-      doSave();
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [countdown, saveOpen]);
-
-  const handleSave = () => {
-    if (!employee) return;
-
-    if (pendingTotal === 0) {
-      router.push('/');
-      return;
-    }
-
-    startSaveCountdown();
-  };
+    fetchEmployee();
+  }, [employeeNumber, router]);
 
   const handleConfirmReset = async () => {
     setResetOpen(false);
@@ -269,57 +98,30 @@ export default function TabPage({
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ employeeNumber }),
     });
-
     if (res.ok) {
       const data = await res.json();
       setEmployee(data);
-      setPendingTotal(0);
-      setScannedProducts([]);
+      cart.setPendingTotal(0);
+      cart.setScannedProducts([]);
     }
     setLoading(false);
-  };
-
-  const getBalanceColor = (value: number) => {
-    const clamped = Math.max(0, Math.min(value, 80));
-    const ratio = clamped / 80;
-
-    // green (34,197,94) → yellow (234,179,8) → red (239,68,68)
-    let r: number, g: number, b: number;
-    if (ratio <= 0.5) {
-      const t = ratio * 2;
-      r = Math.round(34 + (234 - 34) * t);
-      g = Math.round(197 + (179 - 197) * t);
-      b = Math.round(94 + (8 - 94) * t);
-    } else {
-      const t = (ratio - 0.5) * 2;
-      r = Math.round(234 + (239 - 234) * t);
-      g = Math.round(179 + (68 - 179) * t);
-      b = Math.round(8 + (68 - 8) * t);
-    }
-
-    return {
-      bg: `rgba(${r}, ${g}, ${b}, 0.1)`,
-      fg: `rgb(${r}, ${g}, ${b})`,
-    };
   };
 
   // Keep scanner input focused when no modal is open
   useEffect(() => {
     const refocus = () => {
-      if (!saveOpen && !resetOpen && !unknownOpen && !editProduct) {
-        scanInputRef.current?.focus();
+      if (!save.saveOpen && !resetOpen && !unknownOpen && !editProduct) {
+        cart.scanInputRef.current?.focus();
       }
     };
     document.addEventListener('click', refocus);
-    return () => {
-      document.removeEventListener('click', refocus);
-    };
-  }, [saveOpen, resetOpen, unknownOpen, editProduct]);
+    return () => document.removeEventListener('click', refocus);
+  }, [save.saveOpen, resetOpen, unknownOpen, editProduct, cart.scanInputRef]);
 
-  const hasPending = pendingTotal !== 0;
-  const projectedTab = employee ? employee.tab + pendingTotal : 0;
+  const hasPending = cart.pendingTotal !== 0;
+  const projectedTab = employee ? employee.tab + cart.pendingTotal : 0;
   const balanceColor = getBalanceColor(projectedTab);
-  const pendingColor = getBalanceColor(pendingTotal > 0 ? projectedTab : 0);
+  const pendingColor = getBalanceColor(cart.pendingTotal > 0 ? projectedTab : 0);
 
   if (!employee) return null;
 
@@ -351,41 +153,15 @@ export default function TabPage({
 
         {/* Hidden barcode scanner input */}
         <Input
-          ref={scanInputRef}
-          value={scanValue}
+          ref={cart.scanInputRef}
+          value={cart.scanValue}
           onBlur={() => {
-            if (!saveOpen && !resetOpen && !unknownOpen && !editProduct) {
-              scanInputRef.current?.focus();
+            if (!save.saveOpen && !resetOpen && !unknownOpen && !editProduct) {
+              cart.scanInputRef.current?.focus();
             }
           }}
-          onChange={(e) => {
-            const val = e.target.value.replace(/\D/g, '');
-            setScanValue(val);
-
-            const now = Date.now();
-            if (now - lastScanKeystrokeRef.current < RAPID_INPUT_THRESHOLD_MS) {
-              rapidScanCountRef.current++;
-            } else {
-              rapidScanCountRef.current = 1;
-            }
-            lastScanKeystrokeRef.current = now;
-
-            if (autoScanTimerRef.current) {
-              clearTimeout(autoScanTimerRef.current);
-            }
-
-            if (rapidScanCountRef.current >= 3 && val.length >= MIN_BARCODE_LENGTH) {
-              autoScanTimerRef.current = setTimeout(() => {
-                handleProductScan(val);
-              }, AUTO_SUBMIT_DELAY_MS);
-            }
-          }}
-          onKeyDown={(e) => {
-            if (e.key === 'Enter') {
-              if (autoScanTimerRef.current) clearTimeout(autoScanTimerRef.current);
-              handleProductScan(scanValue);
-            }
-          }}
+          onChange={cart.handleScanChange}
+          onKeyDown={cart.handleScanKeyDown}
           position="absolute"
           opacity={0}
           h={0}
@@ -395,7 +171,7 @@ export default function TabPage({
           autoFocus
         />
 
-        {/* Fixed height container for scan feedback and products list to prevent UI shifting */}
+        {/* Fixed height container for scan feedback and products list */}
         <Box minH="120px" w="full" position="relative" zIndex={10}>
           {/* Scan feedback */}
           <Box
@@ -408,24 +184,28 @@ export default function TabPage({
             borderRadius="xl"
             bg="bg.subtle"
             textAlign="center"
-            opacity={scanFeedback ? 1 : 0}
-            visibility={scanFeedback ? 'visible' : 'hidden'}
+            opacity={cart.scanFeedback ? 1 : 0}
+            visibility={cart.scanFeedback ? 'visible' : 'hidden'}
             transition="all 0.2s"
             zIndex={2}
           >
             <Text fontSize={{ base: 'md', md: 'lg' }} fontWeight="600">
-              {scanFeedback || ' '}
+              {cart.scanFeedback || ' '}
             </Text>
           </Box>
 
           {/* Scanned products list */}
-          <VStack 
-            w="full" 
-            maxH="120px" 
-            overflowY="auto" 
+          <VStack
+            w="full"
+            maxH="120px"
+            overflowY="auto"
             gap={1}
-            opacity={scannedProducts.length > 0 && !scanFeedback ? 1 : 0}
-            visibility={scannedProducts.length > 0 && !scanFeedback ? 'visible' : 'hidden'}
+            opacity={cart.scannedProducts.length > 0 && !cart.scanFeedback ? 1 : 0}
+            visibility={
+              cart.scannedProducts.length > 0 && !cart.scanFeedback
+                ? 'visible'
+                : 'hidden'
+            }
             transition="all 0.2s"
             position="absolute"
             top={0}
@@ -435,10 +215,13 @@ export default function TabPage({
             css={{
               '&::-webkit-scrollbar': { width: '4px' },
               '&::-webkit-scrollbar-track': { background: 'transparent' },
-              '&::-webkit-scrollbar-thumb': { background: 'var(--chakra-colors-border)', borderRadius: '4px' },
+              '&::-webkit-scrollbar-thumb': {
+                background: 'var(--chakra-colors-border)',
+                borderRadius: '4px',
+              },
             }}
           >
-            {scannedProducts.map((p) => (
+            {cart.scannedProducts.map((p) => (
               <Flex
                 key={p.barcode}
                 w="full"
@@ -499,8 +282,8 @@ export default function TabPage({
               color={pendingColor.fg}
               visibility={hasPending ? 'visible' : 'hidden'}
             >
-              {pendingTotal > 0 ? '+' : ''}
-              {pendingTotal.toFixed(2)}$ depuis {employee.tab.toFixed(2)}$
+              {cart.pendingTotal > 0 ? '+' : ''}
+              {cart.pendingTotal.toFixed(2)}$ depuis {employee.tab.toFixed(2)}$
             </Text>
 
             {projectedTab > 75 && (
@@ -521,8 +304,9 @@ export default function TabPage({
               flex={1}
               h="auto"
               py={6}
-              colorPalette="gray" variant="outline"
-              onClick={addCoffee}
+              colorPalette="gray"
+              variant="outline"
+              onClick={cart.addCoffee}
               disabled={loading}
               fontWeight="600"
               fontSize={{ base: 'lg', md: 'xl' }}
@@ -540,7 +324,7 @@ export default function TabPage({
               h="auto"
               py={6}
               colorPalette="gray"
-              onClick={handleSave}
+              onClick={save.handleSave}
               loading={loading}
               fontWeight="600"
               fontSize={{ base: 'xl', md: '2xl' }}
@@ -564,257 +348,55 @@ export default function TabPage({
         </Flex>
       </Flex>
 
-      {/* Reset confirmation modal */}
-      <DialogRoot
+      <ResetModal
         open={resetOpen}
-        onOpenChange={(e) => setResetOpen(e.open)}
-        placement="center"
-        size="lg"
-      >
-        <DialogBackdrop />
-        <DialogPositioner>
-          <DialogContent p={8}>
-            <DialogHeader pb={4}>
-              <DialogTitle fontSize="2xl" fontWeight="700">
-                Remettre à zéro
-              </DialogTitle>
-            </DialogHeader>
-            <DialogBody>
-              <Text fontSize="lg">
-                Le solde de {employee?.fullName} sera remis à 0.00$. Cette
-                action est irréversible.
-              </Text>
-            </DialogBody>
-            <DialogFooter pt={6}>
-              <HStack gap={3} w="full">
-                <Button
-                  flex={1}
-                  variant="outline"
-                  size="lg"
-                  fontSize="lg"
-                  onClick={() => setResetOpen(false)}
-                >
-                  Annuler
-                </Button>
-                <Button
-                  flex={1}
-                  colorPalette="red"
-                  size="lg"
-                  fontSize="lg"
-                  onClick={handleConfirmReset}
-                >
-                  Confirmer
-                </Button>
-              </HStack>
-            </DialogFooter>
-          </DialogContent>
-        </DialogPositioner>
-      </DialogRoot>
+        employeeName={employee.fullName}
+        onOpenChange={setResetOpen}
+        onConfirm={handleConfirmReset}
+      />
 
-      {/* Save confirmation modal with countdown */}
-      <DialogRoot
-        open={saveOpen}
-        onOpenChange={(e) => {
-          if (!e.open) cancelSave();
+      <SaveModal
+        open={save.saveOpen}
+        countdown={save.countdown}
+        pendingTotal={cart.pendingTotal}
+        projectedTab={projectedTab}
+        onCancel={save.cancelSave}
+        onSave={() => {
+          save.cancelSave();
+          save.doSave();
         }}
-        placement="center"
-        size="lg"
-      >
-        <DialogBackdrop />
-        <DialogPositioner>
-          <DialogContent p={8}>
-            <DialogHeader pb={2}>
-              <DialogTitle fontSize="2xl" fontWeight="700">
-                Confirmation
-              </DialogTitle>
-            </DialogHeader>
-            <DialogBody py={6}>
-              <VStack gap={5} w="full">
-                <VStack gap={1} w="full">
-                  <HStack w="full" justify="space-between">
-                    <Text fontSize="lg" color="fg.muted">
-                      Modification
-                    </Text>
-                    <Text fontSize="lg" fontWeight="700">
-                      {pendingTotal > 0 ? '+' : ''}
-                      {pendingTotal.toFixed(2)}$
-                    </Text>
-                  </HStack>
-                  <HStack w="full" justify="space-between">
-                    <Text fontSize="lg" color="fg.muted">
-                      Nouveau solde
-                    </Text>
-                    <Text fontSize="lg" fontWeight="700">
-                      {projectedTab.toFixed(2)}$
-                    </Text>
-                  </HStack>
-                </VStack>
+      />
 
-                <VStack gap={2} w="full">
-                  <ProgressRoot
-                    value={(countdown / 5) * 100}
-                    w="full"
-                    size="lg"
-                    colorPalette="gray"
-                  >
-                    <ProgressTrack>
-                      <ProgressRange />
-                    </ProgressTrack>
-                  </ProgressRoot>
-                  <Text fontSize="sm" color="fg.muted">
-                    Sauvegarde automatique dans {countdown}s
-                  </Text>
-                </VStack>
-              </VStack>
-            </DialogBody>
-            <DialogFooter pt={6}>
-              <HStack gap={3} w="full">
-                <Button
-                  flex={1}
-                  variant="outline"
-                  size="lg"
-                  fontSize="lg"
-                  onClick={cancelSave}
-                >
-                  Annuler
-                </Button>
-                <Button
-                  flex={1}
-                  colorPalette="gray"
-                  size="lg"
-                  fontSize="lg"
-                  onClick={() => {
-                    cancelSave();
-                    doSave();
-                  }}
-                >
-                  Sauvegarder
-                </Button>
-              </HStack>
-            </DialogFooter>
-          </DialogContent>
-        </DialogPositioner>
-      </DialogRoot>
-
-      {/* Unknown product modal */}
-      <DialogRoot
+      <UnknownProductModal
         open={unknownOpen}
-        onOpenChange={(e) => setUnknownOpen(e.open)}
-        placement="center"
-        size="md"
-      >
-        <DialogBackdrop />
-        <DialogPositioner>
-          <DialogContent p={8} textAlign="center">
-            <DialogHeader pb={4}>
-              <DialogTitle fontSize="2xl" fontWeight="700" color="red.500">
-                Produit inconnu
-              </DialogTitle>
-            </DialogHeader>
-            <DialogBody>
-              <Text fontSize="lg" fontWeight="500">
-                Ce produit n&apos;est pas reconnu.
-              </Text>
-              <Text mt={4} fontSize="md" color="fg.muted">
-                Veuillez voir un administrateur OPN pour ajouter ce produit au système de la cantine.
-              </Text>
-            </DialogBody>
-            <DialogFooter pt={6} justifyContent="center">
-              <Button
-                size="lg"
-                colorPalette="gray"
-                onClick={() => setUnknownOpen(false)}
-              >
-                Compris
-              </Button>
-            </DialogFooter>
-          </DialogContent>
-        </DialogPositioner>
-      </DialogRoot>
+        onOpenChange={setUnknownOpen}
+      />
 
-      {/* Edit cart item modal */}
-      <DialogRoot
-        open={!!editProduct}
-        onOpenChange={(e) => { if (!e.open) setEditProduct(null); }}
-        placement="center"
-        size="sm"
-      >
-        <DialogBackdrop />
-        <DialogPositioner>
-          <DialogContent p={6}>
-            <DialogHeader pb={3}>
-              <DialogTitle fontSize="xl" fontWeight="700">
-                {editProduct?.name}
-              </DialogTitle>
-            </DialogHeader>
-            <DialogBody>
-              <Input
-                type="number"
-                min={1}
-                value={editQty}
-                onChange={(e) => {
-                  const val = parseInt(e.target.value, 10);
-                  if (!isNaN(val) && val >= 1) setEditQty(val);
-                }}
-                fontSize="3xl"
-                fontWeight="800"
-                textAlign="center"
-                py={6}
-                h="auto"
-                autoFocus
-              />
-            </DialogBody>
-            <DialogFooter pt={5}>
-              <VStack gap={3} w="full">
-                <Button
-                  w="full"
-                  colorPalette="red"
-                  variant="outline"
-                  size="lg"
-                  onClick={() => {
-                    if (!editProduct) return;
-                    setPendingTotal((prev) => prev - editProduct.qty * editProduct.price);
-                    setScannedProducts((prev) =>
-                      prev.filter((p) => p.barcode !== editProduct.barcode)
-                    );
-                    setEditProduct(null);
-                  }}
-                >
-                  Supprimer
-                </Button>
-                <HStack gap={3} w="full">
-                  <Button
-                    flex={1}
-                    variant="outline"
-                    size="lg"
-                    onClick={() => setEditProduct(null)}
-                  >
-                    Annuler
-                  </Button>
-                  <Button
-                    flex={1}
-                    colorPalette="gray"
-                    size="lg"
-                    onClick={() => {
-                      if (!editProduct) return;
-                      const delta = editQty - editProduct.qty;
-                      setPendingTotal((prev) => prev + delta * editProduct.price);
-                      setScannedProducts((prev) =>
-                        prev.map((p) =>
-                          p.barcode === editProduct.barcode ? { ...p, qty: editQty } : p
-                        )
-                      );
-                      setEditProduct(null);
-                    }}
-                  >
-                    Confirmer
-                  </Button>
-                </HStack>
-              </VStack>
-            </DialogFooter>
-          </DialogContent>
-        </DialogPositioner>
-      </DialogRoot>
+      <EditProductModal
+        product={editProduct}
+        qty={editQty}
+        onQtyChange={setEditQty}
+        onOpenChange={(open) => { if (!open) setEditProduct(null); }}
+        onDelete={() => {
+          if (!editProduct) return;
+          cart.setPendingTotal((prev) => prev - editProduct.qty * editProduct.price);
+          cart.setScannedProducts((prev) =>
+            prev.filter((p) => p.barcode !== editProduct.barcode)
+          );
+          setEditProduct(null);
+        }}
+        onConfirm={(newQty) => {
+          if (!editProduct) return;
+          const delta = newQty - editProduct.qty;
+          cart.setPendingTotal((prev) => prev + delta * editProduct.price);
+          cart.setScannedProducts((prev) =>
+            prev.map((p) =>
+              p.barcode === editProduct.barcode ? { ...p, qty: newQty } : p
+            )
+          );
+          setEditProduct(null);
+        }}
+      />
     </>
   );
 }
