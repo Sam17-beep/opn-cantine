@@ -109,6 +109,7 @@ function RegisterForm() {
               setError('');
             }}
             onKeyDown={e => e.key === 'Enter' && handleSubmit()}
+            autoCapitalize="none"
             fontSize={{ base: 'xl', md: '2xl' }}
             fontWeight="500"
             py={8}
