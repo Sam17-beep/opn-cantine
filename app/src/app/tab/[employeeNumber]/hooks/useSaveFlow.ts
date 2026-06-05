@@ -27,6 +27,7 @@ export function useSaveFlow({
   unknownOpen,
   editProduct,
 }: Params) {
+  console.log('[useSaveFlow] render', { scannedProducts: scannedProducts.length, saveOpen: undefined, resetOpen, unknownOpen, editProduct: !!editProduct });
   const [saveOpen, setSaveOpen] = useState(false);
   const [countdown, setCountdown] = useState(5);
 
