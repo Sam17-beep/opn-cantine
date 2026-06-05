@@ -42,6 +42,7 @@ interface ScannedProduct {
 const RAPID_INPUT_THRESHOLD_MS = 80;
 const AUTO_SUBMIT_DELAY_MS = 300;
 const MIN_BARCODE_LENGTH = 4;
+const INACTIVITY_TIMEOUT_MS = 15000;
 
 export default function TabPage({
   params,
@@ -71,6 +72,7 @@ export default function TabPage({
   const [editQty, setEditQty] = useState(0);
   const [countdown, setCountdown] = useState(5);
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const inactivityTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const fetchEmployee = async () => {
     const res = await fetch(
@@ -320,6 +322,27 @@ export default function TabPage({
   const projectedTab = employee ? employee.tab + pendingTotal : 0;
   const balanceColor = getBalanceColor(projectedTab);
   const pendingColor = getBalanceColor(pendingTotal > 0 ? projectedTab : 0);
+
+  const handleSaveRef = useRef(handleSave);
+  handleSaveRef.current = handleSave;
+
+  // Auto-save after 15 s of no new scan; resets each time scannedProducts changes
+  useEffect(() => {
+    if (inactivityTimerRef.current) clearTimeout(inactivityTimerRef.current);
+
+    if (saveOpen || resetOpen || unknownOpen || editProduct) return;
+
+    inactivityTimerRef.current = setTimeout(() => {
+      handleSaveRef.current();
+    }, INACTIVITY_TIMEOUT_MS);
+
+    return () => {
+      if (inactivityTimerRef.current) {
+        clearTimeout(inactivityTimerRef.current);
+        inactivityTimerRef.current = null;
+      }
+    };
+  }, [scannedProducts, saveOpen, resetOpen, unknownOpen, editProduct]);
 
   if (!employee) return null;
 
