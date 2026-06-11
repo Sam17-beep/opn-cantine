@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { transactionRepository } from '@/lib/infrastructure/repositories/transaction.repository.mongo';
 import { productRepository } from '@/lib/infrastructure/repositories/product.repository.mongo';
 import { restockEventRepository } from '@/lib/infrastructure/repositories/restock-event.repository.mongo';
+import { employeeRepository } from '@/lib/infrastructure/repositories/employee.repository.mongo';
 import { verifyAdminRequest, unauthorizedResponse } from '@/lib/infrastructure/auth/admin-token';
 
 function toDateKey(date: Date): string {
@@ -15,10 +16,11 @@ export async function GET(request: NextRequest) {
   if (!verifyAdminRequest(request)) return unauthorizedResponse();
 
   try {
-    const [transactions, products, restockEvents] = await Promise.all([
+    const [transactions, products, restockEvents, employees] = await Promise.all([
       transactionRepository.findAll(),
       productRepository.findAll(),
       restockEventRepository.findAll(),
+      employeeRepository.findAll(),
     ]);
 
     // Sort transactions ASC — findAll() returns DESC
@@ -85,7 +87,11 @@ export async function GET(request: NextRequest) {
       value: parseFloat(values[i].toFixed(2)),
     }));
 
-    return NextResponse.json({ transactionsByDay, tabHistory, inventoryHistory });
+    const totalUnpaidTabs = parseFloat(
+      employees.reduce((sum, e) => sum + e.tab, 0).toFixed(2)
+    );
+
+    return NextResponse.json({ transactionsByDay, tabHistory, inventoryHistory, totalUnpaidTabs });
   } catch (error: unknown) {
     return NextResponse.json(
       { error: error instanceof Error ? error.message : 'Internal Server Error' },

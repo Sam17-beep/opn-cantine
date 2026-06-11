@@ -14,13 +14,13 @@ import {
 } from '@chakra-ui/react';
 import { ChartCard } from './components/ChartCard';
 import { InventoryChart } from './components/InventoryChart';
-import { TabHistoryChart } from './components/TabHistoryChart';
 import { TransactionsByDayChart } from './components/TransactionsByDayChart';
 
 interface AnalyticsData {
   transactionsByDay: { date: string; count: number; amount: number }[];
   tabHistory: { date: string; cumulative: number }[];
   inventoryHistory: { date: string; value: number }[];
+  totalUnpaidTabs: number;
 }
 
 export default function DashboardPage() {
@@ -157,16 +157,14 @@ export default function DashboardPage() {
         >
           Tableau de bord
         </Heading>
-        <IconButton
-          aria-label="Fermer"
+        <Button
           variant="outline"
           size="lg"
           color="fg.muted"
-          fontSize="xl"
           onClick={() => router.push('/admin')}
         >
-          ✕
-        </IconButton>
+          ← Administration
+        </Button>
       </Flex>
 
       {loading ? (
@@ -192,9 +190,24 @@ export default function DashboardPage() {
               <InventoryChart data={data.inventoryHistory} />
             </ChartCard>
           </Box>
-          <ChartCard title="Total des ardoises (cumulatif)">
-            <TabHistoryChart data={data.tabHistory} />
-          </ChartCard>
+          <Box
+            borderRadius="xl"
+            border="1px solid"
+            borderColor="border"
+            p={6}
+            display="flex"
+            flexDirection="column"
+            justifyContent="center"
+            alignItems="center"
+            gap={2}
+          >
+            <Text fontWeight="700" fontSize="lg" color="fg.muted">
+              Total des ardoises impayées
+            </Text>
+            <Text fontWeight="800" fontSize={{ base: '4xl', md: '5xl' }}>
+              {data.totalUnpaidTabs.toFixed(2)}$
+            </Text>
+          </Box>
           <ChartCard title="Transactions par jour">
             <TransactionsByDayChart data={data.transactionsByDay} />
           </ChartCard>
