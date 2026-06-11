@@ -239,6 +239,18 @@ export default function AdminPage() {
           >
             Tableau de bord
           </Button>
+          <Button
+            flex={1}
+            h="auto"
+            py={6}
+            variant="outline"
+            colorPalette="gray"
+            onClick={() => router.push('/admin/restock')}
+            fontWeight="600"
+            fontSize={{ base: 'lg', md: 'xl' }}
+          >
+            Réapprovisionnement
+          </Button>
         </Flex>
 
         {/* Total */}
