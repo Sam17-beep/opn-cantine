@@ -329,7 +329,7 @@ export default function TabPage({
               fontWeight="600"
               fontSize={{ base: 'xl', md: '2xl' }}
             >
-              {hasPending ? 'Sauvegarder' : 'Retour'}
+              {hasPending ? 'Sauvegarder' : 'Déconection'}
             </Button>
             <Button
               flex={{ md: 1 }}
