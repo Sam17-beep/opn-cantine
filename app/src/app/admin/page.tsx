@@ -50,7 +50,9 @@ export default function AdminPage() {
 
   useEffect(() => {
     setMounted(true);
-    setCheckingAuth(false);
+    fetch('/api/admin/check')
+      .then((res) => { if (res.ok) setAuthenticated(true); setCheckingAuth(false); })
+      .catch(() => setCheckingAuth(false));
   }, []);
 
   const fetchEmployees = async () => {
@@ -100,6 +102,11 @@ export default function AdminPage() {
       setPinError('NIP invalide.');
       setPin('');
     }
+  };
+
+  const handleClose = async () => {
+    await fetch('/api/admin/logout', { method: 'POST' });
+    router.push('/');
   };
 
   const handleDelete = async () => {
@@ -207,7 +214,7 @@ export default function AdminPage() {
             size="lg"
             color="fg.muted"
             fontSize="xl"
-            onClick={() => router.push('/')}
+            onClick={handleClose}
           >
             ✕
           </IconButton>
