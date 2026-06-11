@@ -276,6 +276,8 @@ export default function AdminProductsPage() {
   };
 
   const hasEdits = Object.keys(quantityEdits).length > 0 || Object.keys(priceEdits).length > 0;
+  const canCreateProduct =
+    !!newName && !!newPrice && parseFloat(newPrice) >= 0 && !!newQty && parseInt(newQty) >= 0;
 
   // Filter products for association search
   const filteredProducts = associateSearch
@@ -789,6 +791,7 @@ export default function AdminProductsPage() {
                     placeholder="Nom du produit"
                     value={newName}
                     onChange={(e) => setNewName(e.target.value)}
+                    onKeyDown={(e) => { if (e.key === 'Enter' && canCreateProduct) handleCreateProduct(); }}
                     fontSize="lg"
                     py={4}
                     h="auto"
@@ -801,6 +804,7 @@ export default function AdminProductsPage() {
                     min="0"
                     value={newPrice}
                     onChange={(e) => setNewPrice(e.target.value)}
+                    onKeyDown={(e) => { if (e.key === 'Enter' && canCreateProduct) handleCreateProduct(); }}
                     fontSize="lg"
                     py={4}
                     h="auto"
@@ -811,6 +815,7 @@ export default function AdminProductsPage() {
                     min="0"
                     value={newQty}
                     onChange={(e) => setNewQty(e.target.value)}
+                    onKeyDown={(e) => { if (e.key === 'Enter' && canCreateProduct) handleCreateProduct(); }}
                     fontSize="lg"
                     py={4}
                     h="auto"
@@ -876,13 +881,7 @@ export default function AdminProductsPage() {
                     size="lg"
                     fontSize="lg"
                     onClick={handleCreateProduct}
-                    disabled={
-                      !newName ||
-                      !newPrice ||
-                      parseFloat(newPrice) < 0 ||
-                      !newQty ||
-                      parseInt(newQty) < 0
-                    }
+                    disabled={!canCreateProduct}
                   >
                     Créer
                   </Button>

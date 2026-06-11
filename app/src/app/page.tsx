@@ -13,9 +13,7 @@ import Image from 'next/image';
 import { useRouter } from 'next/navigation';
 import { useCallback, useEffect, useRef, useState } from 'react';
 
-const RAPID_INPUT_THRESHOLD_MS = 80;
-const AUTO_SUBMIT_DELAY_MS = 300;
-const MIN_LENGTH = 4;
+const CARD_CODE_LENGTH = 12;
 
 type Employee = {
   employeeNumber: string;
@@ -26,18 +24,23 @@ type Employee = {
 export default function Home() {
   const [employeeNumber, setEmployeeNumber] = useState('');
   const [error, setError] = useState('');
+  const [toastMsg, setToastMsg] = useState('');
   const [loading, setLoading] = useState(false);
   const [isSearchMode, setIsSearchMode] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [searchResults, setSearchResults] = useState<Employee[]>([]);
   const router = useRouter();
-  
-  const lastKeystrokeRef = useRef(0);
-  const rapidCountRef = useRef(0);
-  const autoSubmitTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const toastTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const searchDebounceTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const submittingRef = useRef(false);
   const inputRef = useRef<HTMLInputElement>(null);
+
+  const showToast = useCallback((msg: string) => {
+    if (toastTimerRef.current) clearTimeout(toastTimerRef.current);
+    setToastMsg(msg);
+    toastTimerRef.current = setTimeout(() => setToastMsg(''), 3000);
+  }, []);
 
   // Keep the hidden input focused at all times when not in search mode
   useEffect(() => {
@@ -63,8 +66,9 @@ export default function Home() {
       return;
     }
 
-    if (value.length < MIN_LENGTH) {
-      setError('Le numéro doit contenir au moins 4 caractères.');
+    if (value.length !== CARD_CODE_LENGTH) {
+      showToast('Code incomplet. Veuillez rescanner votre carte.');
+      setEmployeeNumber('');
       return;
     }
 
@@ -97,11 +101,11 @@ export default function Home() {
       setLoading(false);
       submittingRef.current = false;
     }
-  }, [employeeNumber, router]);
+  }, [employeeNumber, router, showToast]);
 
   useEffect(() => {
     return () => {
-      if (autoSubmitTimerRef.current) clearTimeout(autoSubmitTimerRef.current);
+      if (toastTimerRef.current) clearTimeout(toastTimerRef.current);
       if (searchDebounceTimerRef.current) clearTimeout(searchDebounceTimerRef.current);
     };
   }, []);
@@ -127,6 +131,26 @@ export default function Home() {
   }, []);
 
   return (
+    <>
+      {toastMsg && (
+        <Box
+          position="fixed"
+          top={6}
+          left="50%"
+          transform="translateX(-50%)"
+          bg="red.500"
+          color="white"
+          px={6}
+          py={3}
+          borderRadius="md"
+          fontSize="md"
+          fontWeight="medium"
+          zIndex={9999}
+          shadow="lg"
+        >
+          {toastMsg}
+        </Box>
+      )}
     <Flex
       minH="100dvh"
       align="center"
@@ -167,28 +191,9 @@ export default function Home() {
               const val = e.target.value.replace(/\D/g, '');
               setEmployeeNumber(val);
               setError('');
-
-              const now = Date.now();
-              if (now - lastKeystrokeRef.current < RAPID_INPUT_THRESHOLD_MS) {
-                rapidCountRef.current++;
-              } else {
-                rapidCountRef.current = 1;
-              }
-              lastKeystrokeRef.current = now;
-
-              if (autoSubmitTimerRef.current) {
-                clearTimeout(autoSubmitTimerRef.current);
-              }
-
-              if (rapidCountRef.current >= 3 && val.length >= MIN_LENGTH) {
-                autoSubmitTimerRef.current = setTimeout(() => {
-                  handleSubmit(val);
-                }, AUTO_SUBMIT_DELAY_MS);
-              }
             }}
             onKeyDown={e => {
               if (e.key === 'Enter') {
-                if (autoSubmitTimerRef.current) clearTimeout(autoSubmitTimerRef.current);
                 handleSubmit();
               }
             }}
@@ -289,5 +294,6 @@ export default function Home() {
         Administration
       </Button>
     </Flex>
+    </>
   );
 }

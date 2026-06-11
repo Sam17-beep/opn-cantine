@@ -213,20 +213,33 @@ export default function AdminPage() {
           </IconButton>
         </Flex>
 
-        {/* Products link */}
-        <Button
-          mt={8}
-          w="full"
-          h="auto"
-          py={6}
-          variant="outline"
-          colorPalette="gray"
-          onClick={() => router.push('/admin/products')}
-          fontWeight="600"
-          fontSize={{ base: 'lg', md: 'xl' }}
-        >
-          Gestion des produits
-        </Button>
+        {/* Nav links */}
+        <Flex mt={8} gap={4} direction={{ base: 'column', md: 'row' }}>
+          <Button
+            flex={1}
+            h="auto"
+            py={6}
+            variant="outline"
+            colorPalette="gray"
+            onClick={() => router.push('/admin/products')}
+            fontWeight="600"
+            fontSize={{ base: 'lg', md: 'xl' }}
+          >
+            Gestion des produits
+          </Button>
+          <Button
+            flex={1}
+            h="auto"
+            py={6}
+            variant="outline"
+            colorPalette="gray"
+            onClick={() => router.push('/admin/dashboard')}
+            fontWeight="600"
+            fontSize={{ base: 'lg', md: 'xl' }}
+          >
+            Tableau de bord
+          </Button>
+        </Flex>
 
         {/* Total */}
         {!loading && employees.length > 0 && (
