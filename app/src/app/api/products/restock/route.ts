@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { ProductApplicationService } from '@/lib/application/services/product.application.service';
 import { productRepository } from '@/lib/infrastructure/repositories/product.repository.mongo';
+import { restockEventRepository } from '@/lib/infrastructure/repositories/restock-event.repository.mongo';
 import {
   verifyAdminRequest,
   unauthorizedResponse,
@@ -21,6 +22,31 @@ export async function POST(request: NextRequest) {
     );
   }
 
+  // Snapshot current quantities before applying updates
+  const productsBeforeUpdate = await Promise.all(
+    updates.map((u: { id: string }) => productRepository.findById(u.id))
+  );
+
   const results = await service.bulkRestock(updates);
+
+  // Log a restock event for each product whose quantity increased
+  const now = new Date();
+  await Promise.all(
+    updates.map(async (u: { id: string; quantity: number }, i: number) => {
+      const before = productsBeforeUpdate[i];
+      if (!before) return;
+      const quantityAdded = u.quantity - before.quantity;
+      if (quantityAdded <= 0) return;
+      await restockEventRepository.save({
+        productId: before.id,
+        productName: before.name,
+        quantityAdded,
+        unitPrice: before.price,
+        valueAdded: parseFloat((quantityAdded * before.price).toFixed(2)),
+        timestamp: now,
+      });
+    })
+  );
+
   return NextResponse.json({ results });
 }

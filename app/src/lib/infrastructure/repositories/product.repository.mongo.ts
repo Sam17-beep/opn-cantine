@@ -9,6 +9,7 @@ interface ProductDocument {
   name: string;
   price: number;
   quantity: number;
+  createdAt?: Date;
 }
 
 function toProduct(doc: ProductDocument): Product {
@@ -18,6 +19,7 @@ function toProduct(doc: ProductDocument): Product {
     name: doc.name,
     price: doc.price,
     quantity: doc.quantity,
+    createdAt: doc.createdAt,
   };
 }
 
@@ -52,15 +54,17 @@ export class MongoProductRepository implements IProductRepository {
   async save(product: Product): Promise<Product> {
     const col = await this.collection();
     const id = randomUUID();
+    const createdAt = new Date();
     const doc: ProductDocument = {
       _id: id,
       barcodes: product.barcodes,
       name: product.name,
       price: product.price,
       quantity: product.quantity,
+      createdAt,
     };
     await col.insertOne(doc);
-    return { ...product, id };
+    return { ...product, id, createdAt };
   }
 
   async update(
