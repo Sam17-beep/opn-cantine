@@ -49,6 +49,24 @@ export class MongoEmployeeRepository implements IEmployeeRepository {
     const result = await col.deleteOne({ employeeNumber });
     return result.deletedCount === 1;
   }
+
+  async updateEmployeeNumber(oldNumber: string, newNumber: string): Promise<Employee | null> {
+    const db = await getDb();
+    const col = db.collection<Employee>(this.collectionName);
+    const conflict = await col.findOne({ employeeNumber: newNumber });
+    if (conflict) throw new Error('Employee number already in use');
+    const result = await col.findOneAndUpdate(
+      { employeeNumber: oldNumber },
+      { $set: { employeeNumber: newNumber } },
+      { returnDocument: 'after' }
+    );
+    if (!result) return null;
+    await db.collection('transactions').updateMany(
+      { employeeNumber: oldNumber },
+      { $set: { employeeNumber: newNumber } }
+    );
+    return result;
+  }
 }
 
 export const employeeRepository = new MongoEmployeeRepository();

@@ -45,4 +45,8 @@ export class EmployeeApplicationService {
   async delete(employeeNumber: string) {
     return this.employeeRepository.delete(employeeNumber);
   }
+
+  async updateEmployeeNumber(oldNumber: string, newNumber: string) {
+    return this.employeeRepository.updateEmployeeNumber(oldNumber, newNumber);
+  }
 }
