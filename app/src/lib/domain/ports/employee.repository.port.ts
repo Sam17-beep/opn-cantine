@@ -7,4 +7,5 @@ export interface IEmployeeRepository {
   updateTab(employeeNumber: string, tab: number): Promise<Employee | null>;
   findAll(): Promise<Employee[]>;
   delete(employeeNumber: string): Promise<boolean>;
+  updateEmployeeNumber(oldNumber: string, newNumber: string): Promise<Employee | null>;
 }

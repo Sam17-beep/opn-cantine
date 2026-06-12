@@ -1,13 +1,11 @@
 'use client';
 
 import { useEffect, useState, useRef, useCallback } from 'react';
-import { useRouter } from 'next/navigation';
 import {
   Box,
   Button,
   Flex,
   HStack,
-  Heading,
   IconButton,
   Input,
   Text,
@@ -36,12 +34,6 @@ const AUTO_SUBMIT_DELAY_MS = 300;
 const MIN_LENGTH = 4;
 
 export default function AdminProductsPage() {
-  const router = useRouter();
-  const [mounted, setMounted] = useState(false);
-  const [authenticated, setAuthenticated] = useState(false);
-  const [checkingAuth, setCheckingAuth] = useState(true);
-  const [pin, setPin] = useState('');
-  const [pinError, setPinError] = useState('');
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -70,35 +62,23 @@ export default function AdminProductsPage() {
   // Inline quantity edits
   const [quantityEdits, setQuantityEdits] = useState<Record<string, number>>({});
   const [priceEdits, setPriceEdits] = useState<Record<string, number>>({});
+  const [nameEdits, setNameEdits] = useState<Record<string, string>>({});
   const [saving, setSaving] = useState(false);
+
+  // Barcode management modal
+  const [barcodeEditProduct, setBarcodeEditProduct] = useState<Product | null>(null);
+  const [barcodeEditList, setBarcodeEditList] = useState<string[]>([]);
+  const [newBarcodeInput, setNewBarcodeInput] = useState('');
 
   // Error/feedback
   const [feedback, setFeedback] = useState('');
 
-  useEffect(() => {
-    setMounted(true);
-    fetch('/api/admin/check').then((res) => {
-      if (res.ok) setAuthenticated(true);
-      setCheckingAuth(false);
-    }).catch(() => {
-      setCheckingAuth(false);
-    });
-  }, []);
-
   const fetchProducts = useCallback(async () => {
     setLoading(true);
     const res = await fetch('/api/products');
-    if (!res.ok) {
-      setAuthenticated(false);
-      setLoading(false);
-      return;
-    }
+    if (!res.ok) { setLoading(false); return; }
     const data = await res.json();
-    if (!Array.isArray(data)) {
-      setAuthenticated(false);
-      setLoading(false);
-      return;
-    }
+    if (!Array.isArray(data)) { setLoading(false); return; }
     data.sort((a: Product, b: Product) => {
       if (a.quantity !== b.quantity) return a.quantity - b.quantity;
       return a.name.localeCompare(b.name);
@@ -106,28 +86,11 @@ export default function AdminProductsPage() {
     setProducts(data);
     setQuantityEdits({});
     setPriceEdits({});
+    setNameEdits({});
     setLoading(false);
   }, []);
 
-  useEffect(() => {
-    if (authenticated) fetchProducts();
-  }, [authenticated, fetchProducts]);
-
-  const handlePin = async () => {
-    setPinError('');
-    const res = await fetch('/api/admin/verify-pin', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ pin }),
-    });
-    const data = await res.json();
-    if (data.valid) {
-      setAuthenticated(true);
-    } else {
-      setPinError('NIP invalide.');
-      setPin('');
-    }
-  };
+  useEffect(() => { fetchProducts(); }, [fetchProducts]);
 
   // Barcode scan handler
   const handleBarcodeScan = useCallback(
@@ -228,7 +191,21 @@ export default function AdminProductsPage() {
     setQuantityEdits((prev) => ({ ...prev, [productId]: newQty }));
   };
 
-  // Bulk save quantities and prices
+  // Barcode save
+  const handleBarcodeSave = async () => {
+    if (!barcodeEditProduct || barcodeEditList.length === 0) return;
+    await fetch(`/api/products/${barcodeEditProduct.id}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ barcodes: barcodeEditList }),
+    });
+    setBarcodeEditProduct(null);
+    setBarcodeEditList([]);
+    setNewBarcodeInput('');
+    fetchProducts();
+  };
+
+  // Bulk save quantities, prices and names
   const handleBulkSave = async () => {
     if (!hasEdits) return;
 
@@ -238,12 +215,14 @@ export default function AdminProductsPage() {
     const editedIds = new Set([
       ...Object.keys(quantityEdits),
       ...Object.keys(priceEdits),
+      ...Object.keys(nameEdits),
     ]);
 
     const promises = Array.from(editedIds).map((id) => {
-      const updates: Record<string, number> = {};
+      const updates: Record<string, unknown> = {};
       if (quantityEdits[id] !== undefined) updates.quantity = quantityEdits[id];
       if (priceEdits[id] !== undefined) updates.price = priceEdits[id];
+      if (nameEdits[id] !== undefined) updates.name = nameEdits[id];
       return fetch(`/api/products/${id}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
@@ -267,15 +246,10 @@ export default function AdminProductsPage() {
 
     setDeleteTarget(null);
 
-    if (!res.ok) {
-      setAuthenticated(false);
-      return;
-    }
-
-    fetchProducts();
+    if (res.ok) fetchProducts();
   };
 
-  const hasEdits = Object.keys(quantityEdits).length > 0 || Object.keys(priceEdits).length > 0;
+  const hasEdits = Object.keys(quantityEdits).length > 0 || Object.keys(priceEdits).length > 0 || Object.keys(nameEdits).length > 0;
   const canCreateProduct =
     !!newName && !!newPrice && parseFloat(newPrice) >= 0 && !!newQty && parseInt(newQty) >= 0;
 
@@ -288,109 +262,9 @@ export default function AdminProductsPage() {
       )
     : products;
 
-  if (!mounted || checkingAuth) {
-    return <Flex minH="100dvh" />;
-  }
-
-  if (!authenticated) {
-    return (
-      <Flex
-        minH="100dvh"
-        align="center"
-        justify="center"
-        px={8}
-        direction="column"
-        gap={6}
-      >
-        <IconButton
-          aria-label="Retour"
-          variant="outline"
-          size="lg"
-          color="fg.muted"
-          fontSize="xl"
-          position="absolute"
-          top={6}
-          right={6}
-          onClick={() => router.push('/admin')}
-        >
-          ✕
-        </IconButton>
-
-        <Heading
-          size={{ base: '2xl', md: '4xl' }}
-          fontWeight="800"
-          letterSpacing="-0.02em"
-        >
-          Produits
-        </Heading>
-        <Text color="fg.muted" fontSize={{ base: 'lg', md: 'xl' }}>
-          Entrez le NIP
-        </Text>
-
-        <VStack gap={4} w="full" maxW="400px">
-          <Input
-            type="password"
-            inputMode="numeric"
-            placeholder="NIP"
-            value={pin}
-            onChange={(e) => {
-              setPin(e.target.value);
-              setPinError('');
-            }}
-            onKeyDown={(e) => e.key === 'Enter' && handlePin()}
-            textAlign="center"
-            fontSize={{ base: '3xl', md: '5xl' }}
-            fontWeight="600"
-            letterSpacing="0.2em"
-            py={10}
-            h="auto"
-            autoFocus
-          />
-          {pinError && (
-            <Text color="red.500" fontSize="lg">
-              {pinError}
-            </Text>
-          )}
-          <Button
-            w="full"
-            h="auto"
-            py={6}
-            colorPalette="gray"
-            onClick={handlePin}
-            fontWeight="600"
-            fontSize={{ base: 'xl', md: '2xl' }}
-          >
-            Continuer
-          </Button>
-        </VStack>
-      </Flex>
-    );
-  }
-
   return (
     <>
-      <Flex minH="100dvh" direction="column" px={8} py={6}>
-        {/* Top bar */}
-        <Flex justify="space-between" align="center">
-          <Heading
-            size={{ base: '2xl', md: '4xl' }}
-            fontWeight="800"
-            letterSpacing="-0.02em"
-          >
-            Produits
-          </Heading>
-          <IconButton
-            aria-label="Fermer"
-            variant="outline"
-            size="lg"
-            color="fg.muted"
-            fontSize="xl"
-            onClick={() => router.push('/admin')}
-          >
-            ✕
-          </IconButton>
-        </Flex>
-
+      <Flex direction="column" px={8} py={6} pb={8}>
         {/* Scanner section */}
         <Box mt={8} position="relative">
           <Text fontSize="md" fontWeight="600" color="fg.muted" mb={2}>
@@ -545,20 +419,36 @@ export default function AdminProductsPage() {
                 align="center"
                 _hover={{ bg: 'bg.subtle' }}
               >
-                <Text
+                <Input
                   flex={3}
+                  value={nameEdits[product.id] !== undefined ? nameEdits[product.id] : product.name}
+                  onChange={(e) => setNameEdits((prev) => ({ ...prev, [product.id]: e.target.value }))}
                   fontSize={{ base: 'md', md: 'lg' }}
                   fontWeight="600"
-                >
-                  {product.name}
-                </Text>
-                <Text
-                  flex={2}
-                  fontSize={{ base: 'sm', md: 'md' }}
-                  color="fg.muted"
-                >
-                  {product.barcodes.join(', ')}
-                </Text>
+                  border="none"
+                  outline="none"
+                  _focusVisible={{ outline: 'none', boxShadow: 'none' }}
+                  px={0}
+                  h="auto"
+                />
+                <Flex flex={2} align="center" gap={1}>
+                  <Text fontSize={{ base: 'sm', md: 'md' }} color="fg.muted" flex={1} truncate>
+                    {product.barcodes.join(', ')}
+                  </Text>
+                  <IconButton
+                    aria-label="Modifier les codes-barres"
+                    variant="ghost"
+                    size="sm"
+                    fontSize="md"
+                    onClick={() => {
+                      setBarcodeEditProduct(product);
+                      setBarcodeEditList([...product.barcodes]);
+                      setNewBarcodeInput('');
+                    }}
+                  >
+                    ✎
+                  </IconButton>
+                </Flex>
                 <Flex flex={1} justify="end">
                   <Input
                     type="number"
@@ -888,6 +778,107 @@ export default function AdminProductsPage() {
                 </HStack>
               </DialogFooter>
             )}
+          </DialogContent>
+        </DialogPositioner>
+      </DialogRoot>
+
+      {/* Barcode management modal */}
+      <DialogRoot
+        open={!!barcodeEditProduct}
+        onOpenChange={(e) => {
+          if (!e.open) {
+            setBarcodeEditProduct(null);
+            setBarcodeEditList([]);
+            setNewBarcodeInput('');
+          }
+        }}
+        placement="center"
+        size="lg"
+      >
+        <DialogBackdrop />
+        <DialogPositioner>
+          <DialogContent p={8}>
+            <DialogHeader pb={4}>
+              <DialogTitle fontSize="2xl" fontWeight="700">
+                Codes-barres — {barcodeEditProduct?.name}
+              </DialogTitle>
+            </DialogHeader>
+            <DialogBody>
+              <VStack gap={4} align="stretch">
+                <VStack gap={2} align="stretch">
+                  {barcodeEditList.map((bc) => (
+                    <Flex key={bc} align="center" justify="space-between" py={2} px={4} borderRadius="md" bg="bg.subtle">
+                      <Text fontWeight="600" fontSize="lg">{bc}</Text>
+                      <IconButton
+                        aria-label="Supprimer ce code-barres"
+                        variant="ghost"
+                        size="sm"
+                        color="fg.muted"
+                        disabled={barcodeEditList.length <= 1}
+                        onClick={() => setBarcodeEditList((prev) => prev.filter((b) => b !== bc))}
+                      >
+                        ✕
+                      </IconButton>
+                    </Flex>
+                  ))}
+                </VStack>
+                <Separator />
+                <Text fontSize="md" fontWeight="600">Ajouter un code-barres</Text>
+                <HStack>
+                  <Input
+                    placeholder="Code-barres"
+                    value={newBarcodeInput}
+                    onChange={(e) => setNewBarcodeInput(e.target.value.replace(/\D/g, ''))}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter' && newBarcodeInput && !barcodeEditList.includes(newBarcodeInput)) {
+                        setBarcodeEditList((prev) => [...prev, newBarcodeInput]);
+                        setNewBarcodeInput('');
+                      }
+                    }}
+                    fontSize="lg"
+                    inputMode="numeric"
+                  />
+                  <Button
+                    colorPalette="gray"
+                    onClick={() => {
+                      if (newBarcodeInput && !barcodeEditList.includes(newBarcodeInput)) {
+                        setBarcodeEditList((prev) => [...prev, newBarcodeInput]);
+                        setNewBarcodeInput('');
+                      }
+                    }}
+                    disabled={!newBarcodeInput || barcodeEditList.includes(newBarcodeInput)}
+                  >
+                    Ajouter
+                  </Button>
+                </HStack>
+              </VStack>
+            </DialogBody>
+            <DialogFooter pt={6}>
+              <HStack gap={3} w="full">
+                <Button
+                  flex={1}
+                  variant="outline"
+                  size="lg"
+                  fontSize="lg"
+                  onClick={() => {
+                    setBarcodeEditProduct(null);
+                    setBarcodeEditList([]);
+                    setNewBarcodeInput('');
+                  }}
+                >
+                  Annuler
+                </Button>
+                <Button
+                  flex={1}
+                  colorPalette="gray"
+                  size="lg"
+                  fontSize="lg"
+                  onClick={handleBarcodeSave}
+                >
+                  Sauvegarder
+                </Button>
+              </HStack>
+            </DialogFooter>
           </DialogContent>
         </DialogPositioner>
       </DialogRoot>
