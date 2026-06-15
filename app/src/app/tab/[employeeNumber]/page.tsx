@@ -22,6 +22,24 @@ import { EditProductModal } from './components/EditProductModal';
 import { UnknownProductModal } from './components/UnknownProductModal';
 import type { Employee, ScannedProduct } from './types';
 
+type AnnouncementProduct = { name: string; price: number };
+type AnnouncementEvent = {
+  product?: AnnouncementProduct | null;
+  salesStart?: string | null;
+  salesEnd?: string | null;
+};
+
+function localDateString(): string {
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+}
+
+function isProductVisible(event: AnnouncementEvent): boolean {
+  const today = localDateString();
+  return !!event.product && !!event.salesStart && today >= event.salesStart &&
+    (!event.salesEnd || today <= event.salesEnd);
+}
+
 function getBalanceColor(value: number) {
   const clamped = Math.max(0, Math.min(value, 80));
   const ratio = clamped / 80;
@@ -55,6 +73,7 @@ export default function TabPage({
   const router = useRouter();
 
   const [employee, setEmployee] = useState<Employee | null>(null);
+  const [announcementProduct, setAnnouncementProduct] = useState<AnnouncementProduct | null>(null);
   const [loading, setLoading] = useState(false);
   const [resetOpen, setResetOpen] = useState(false);
   const [unknownOpen, setUnknownOpen] = useState(false);
@@ -88,6 +107,13 @@ export default function TabPage({
       }
     };
     fetchEmployee();
+
+    fetch('/api/announcement')
+      .then((res) => res.ok ? res.json() : null)
+      .then((data: AnnouncementEvent | null) => {
+        if (data && isProductVisible(data) && data.product) setAnnouncementProduct(data.product);
+      })
+      .catch(() => null);
   }, [employeeNumber, router]);
 
   const handleConfirmReset = async () => {
@@ -313,6 +339,23 @@ export default function TabPage({
             >
               Café (+1.00$)
             </Button>
+            {announcementProduct && (
+              <Button
+                flex={1}
+                h="auto"
+                py={6}
+                variant="outline"
+                borderColor="#0068A2"
+                color="#0068A2"
+                _hover={{ bg: '#0068A210' }}
+                onClick={() => cart.addEvent(announcementProduct.name, announcementProduct.price)}
+                disabled={loading}
+                fontWeight="600"
+                fontSize={{ base: 'lg', md: 'xl' }}
+              >
+                {announcementProduct.name} (+{announcementProduct.price.toFixed(2)}$)
+              </Button>
+            )}
           </HStack>
 
           <Separator />

@@ -21,6 +21,29 @@ type Employee = {
   tab: number;
 };
 
+type AnnouncementEvent = {
+  title: string;
+  description: string;
+  bannerStart?: string | null;
+  bannerEnd?: string | null;
+};
+
+type Announcement = {
+  title: string;
+  description: string;
+};
+
+function localDateString(): string {
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+}
+
+function isBannerVisible(event: AnnouncementEvent): boolean {
+  const today = localDateString();
+  return !!event.bannerStart && today >= event.bannerStart &&
+    (!event.bannerEnd || today <= event.bannerEnd);
+}
+
 export default function Home() {
   const [employeeNumber, setEmployeeNumber] = useState('');
   const [error, setError] = useState('');
@@ -29,6 +52,7 @@ export default function Home() {
   const [isSearchMode, setIsSearchMode] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [searchResults, setSearchResults] = useState<Employee[]>([]);
+  const [announcement, setAnnouncement] = useState<Announcement | null>(null);
   const router = useRouter();
 
   const toastTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -104,6 +128,13 @@ export default function Home() {
   }, [employeeNumber, router, showToast]);
 
   useEffect(() => {
+    fetch('/api/announcement')
+      .then((res) => res.ok ? res.json() : null)
+      .then((data: AnnouncementEvent | null) => { if (data && isBannerVisible(data)) setAnnouncement({ title: data.title, description: data.description }); })
+      .catch(() => null);
+  }, []);
+
+  useEffect(() => {
     return () => {
       if (toastTimerRef.current) clearTimeout(toastTimerRef.current);
       if (searchDebounceTimerRef.current) clearTimeout(searchDebounceTimerRef.current);
@@ -177,6 +208,25 @@ export default function Home() {
           {isSearchMode ? "Recherchez votre numéro d'employé" : 'Scannez votre carte'}
         </Text>
       </VStack>
+
+      {announcement && (
+        <Box
+          w="full"
+          maxW="480px"
+          px={6}
+          py={5}
+          borderRadius="2xl"
+          bg="#0068A2"
+          textAlign="center"
+        >
+          <Text fontSize={{ base: 'xl', md: '2xl' }} fontWeight="800" mb={1} color="white">
+            {announcement.title}
+          </Text>
+          <Text fontSize={{ base: 'md', md: 'lg' }} color="whiteAlpha.800">
+            {announcement.description}
+          </Text>
+        </Box>
+      )}
 
       {!isSearchMode ? (
         <>

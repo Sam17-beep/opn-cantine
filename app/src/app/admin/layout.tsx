@@ -14,10 +14,11 @@ import {
 } from '@chakra-ui/react';
 
 const NAV_LINKS = [
-  { href: '/admin',           label: 'Employés' },
-  { href: '/admin/products',  label: 'Produits' },
-  { href: '/admin/dashboard', label: 'Tableau de bord' },
-  { href: '/admin/restock',   label: 'Stocks' },
+  { href: '/admin',                label: 'Employés' },
+  { href: '/admin/products',       label: 'Produits' },
+  { href: '/admin/dashboard',      label: 'Tableau de bord' },
+  { href: '/admin/restock',        label: 'Stocks' },
+  { href: '/admin/announcements',  label: 'Annonces' },
 ];
 
 const NAV_H = '72px';
