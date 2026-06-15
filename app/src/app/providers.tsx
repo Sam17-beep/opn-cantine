@@ -1,7 +1,16 @@
 'use client';
 
 import { useEffect } from 'react';
-import { ChakraProvider, defaultSystem, Theme } from '@chakra-ui/react';
+import { ChakraProvider, createSystem, defaultConfig, defineConfig } from '@chakra-ui/react';
+
+const system = createSystem(defaultConfig, defineConfig({
+  conditions: {
+    // Scope dark mode to [data-theme=dark] attribute only.
+    // Since we set data-theme="light" on <html> and never change it,
+    // dark mode styles will never apply.
+    dark: '[data-theme=dark] &',
+  },
+}));
 
 export function Providers({ children }: { children: React.ReactNode }) {
   useEffect(() => {
@@ -11,8 +20,8 @@ export function Providers({ children }: { children: React.ReactNode }) {
   }, []);
 
   return (
-    <ChakraProvider value={defaultSystem}>
-      <Theme appearance="light">{children}</Theme>
+    <ChakraProvider value={system}>
+      {children}
     </ChakraProvider>
   );
 }

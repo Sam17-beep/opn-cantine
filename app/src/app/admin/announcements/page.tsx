@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState, useCallback } from 'react';
-import { parseDate } from '@internationalized/date';
+import { parseDate, type DateValue } from '@internationalized/date';
 import { Pencil } from 'lucide-react';
 import {
   Box,
@@ -88,7 +88,7 @@ function RangePicker({ start, end, onChange, onClear }: RangePickerProps) {
   const value = [
     start ? parseDate(start) : null,
     end ? parseDate(end) : null,
-  ].filter(Boolean) as ReturnType<typeof parseDate>[];
+  ].filter(Boolean) as DateValue[];
 
   return (
     <DatePicker.Root
