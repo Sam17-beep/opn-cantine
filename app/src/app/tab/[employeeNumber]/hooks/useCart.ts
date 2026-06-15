@@ -56,7 +56,8 @@ export function useCart(setUnknownOpen: (open: boolean) => void) {
           ];
         });
 
-        setScanFeedback(`${product.name} — ${product.price.toFixed(2)}$`);
+        const suffix = data.discounted ? ' (spécial)' : '';
+        setScanFeedback(`${product.name} — ${product.price.toFixed(2)}$${suffix}`);
         setTimeout(() => setScanFeedback(''), 3000);
       } catch {
         setScanFeedback('Erreur de connexion');
