@@ -121,8 +121,8 @@ export default function AdminPage() {
           <Box w="full" mt={8}>
             <Heading size="lg" mb={4} fontWeight="700">Transactions récentes</Heading>
             <VStack gap={3} w="full" align="stretch">
-              {transactions.slice(0, 5).map((t) => (
-                <Flex key={t.id} p={4} borderRadius="md" bg="bg.subtle" justify="space-between" align="center">
+              {transactions.slice(0, 5).map((t, i) => (
+                <Flex key={t.id ?? `${t.employeeNumber}-${i}`} p={4} borderRadius="md" bg="bg.subtle" justify="space-between" align="center">
                   <VStack align="start" gap={0}>
                     <Text fontWeight="600">
                       {employees.find((e) => e.employeeNumber === t.employeeNumber)?.fullName || t.employeeNumber}

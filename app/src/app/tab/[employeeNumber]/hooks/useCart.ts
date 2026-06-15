@@ -85,6 +85,23 @@ export function useCart(setUnknownOpen: (open: boolean) => void) {
     });
   };
 
+  const addEvent = (name: string, price: number) => {
+    const now = Date.now();
+    if (now - lastAddRef.current < 300) return;
+    lastAddRef.current = now;
+
+    setPendingTotal((prev) => prev + price);
+    setScannedProducts((prev) => {
+      const existing = prev.find((p) => p.barcode === '_event_');
+      if (existing) {
+        return prev.map((p) =>
+          p.barcode === '_event_' ? { ...p, qty: p.qty + 1 } : p
+        );
+      }
+      return [...prev, { barcode: '_event_', name, price, qty: 1 }];
+    });
+  };
+
   const handleScanChange = (e: ChangeEvent<HTMLInputElement>) => {
     const val = e.target.value.replace(/\D/g, '');
     setScanValue(val);
@@ -122,6 +139,7 @@ export function useCart(setUnknownOpen: (open: boolean) => void) {
     scanValue,
     scanInputRef,
     addCoffee,
+    addEvent,
     handleScanChange,
     handleScanKeyDown,
   };
