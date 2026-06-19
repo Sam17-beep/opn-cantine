@@ -7,7 +7,7 @@ export interface TransactionItem {
 
 export interface Transaction {
   id?: string;
-  employeeNumber: string;
+  cardNumber: string;
   items: TransactionItem[];
   totalAmount: number;
   timestamp: Date;
@@ -15,7 +15,7 @@ export interface Transaction {
 
 export class TransactionEntity implements Transaction {
   constructor(
-    public readonly employeeNumber: string,
+    public readonly cardNumber: string,
     public readonly items: TransactionItem[],
     public readonly totalAmount: number,
     public readonly timestamp: Date,
@@ -25,10 +25,10 @@ export class TransactionEntity implements Transaction {
   }
 
   private validate(): void {
-    if (!this.employeeNumber || this.employeeNumber.trim().length === 0) {
-      throw new Error('Employee number is required');
+    if (!this.cardNumber || this.cardNumber.trim().length === 0) {
+      throw new Error('Card number is required');
     }
-    
+
     if (this.totalAmount < 0) {
       throw new Error('Total amount must be >= 0');
     }
@@ -39,12 +39,12 @@ export class TransactionEntity implements Transaction {
   }
 
   static create(
-    employeeNumber: string,
+    cardNumber: string,
     items: TransactionItem[],
     totalAmount: number
   ): TransactionEntity {
     return new TransactionEntity(
-      employeeNumber.trim(),
+      cardNumber.trim(),
       items,
       totalAmount,
       new Date()

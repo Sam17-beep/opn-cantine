@@ -5,16 +5,16 @@ import { employeeRepository } from '@/lib/infrastructure/repositories/employee.r
 const service = new EmployeeApplicationService(employeeRepository);
 
 export async function GET(request: NextRequest) {
-  const employeeNumber = request.nextUrl.searchParams.get('employeeNumber');
+  const cardNumber = request.nextUrl.searchParams.get('cardNumber');
 
-  if (!employeeNumber) {
+  if (!cardNumber) {
     return NextResponse.json(
-      { error: 'employeeNumber is required' },
+      { error: 'cardNumber is required' },
       { status: 400 }
     );
   }
 
-  const employee = await service.lookup(employeeNumber);
+  const employee = await service.lookup(cardNumber);
 
   if (!employee) {
     return NextResponse.json({ found: false });

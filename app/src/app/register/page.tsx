@@ -10,7 +10,7 @@ function RegisterForm() {
 
   // Card number from the URL (passed by the scanner on the main page). Used as
   // the DB identifier so future card scans can find this employee. Never shown.
-  const cardNumber = searchParams.get('employeeNumber') || '';
+  const cardNumber = searchParams.get('cardNumber') || '';
 
   const [employeeNumber, setEmployeeNumber] = useState('');
   const [initialTab, setInitialTab] = useState('');
@@ -48,8 +48,8 @@ function RegisterForm() {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          employeeNumber: identifier,
-          fullName: employeeNumber.trim(),
+          cardNumber: identifier,
+          employeeNumber: employeeNumber.trim(),
           initialTab: parsedInitialTab,
         }),
       });

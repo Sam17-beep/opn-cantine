@@ -22,14 +22,14 @@ import {
 } from '@chakra-ui/react';
 
 interface Employee {
+  cardNumber: string;
   employeeNumber: string;
-  fullName: string;
   tab: number;
 }
 
 interface AdminTransaction {
   id: string;
-  employeeNumber: string;
+  cardNumber: string;
   timestamp: string | Date;
   totalAmount: number;
   items: { name: string; quantity: number }[];
@@ -52,7 +52,7 @@ export default function AdminPage() {
     if (!Array.isArray(data)) { setLoading(false); return; }
     data.sort((a: Employee, b: Employee) => {
       if (b.tab !== a.tab) return b.tab - a.tab;
-      return a.fullName.localeCompare(b.fullName);
+      return a.employeeNumber.localeCompare(b.employeeNumber);
     });
     setEmployees(data);
 
@@ -69,7 +69,7 @@ export default function AdminPage() {
   const handleEditNumber = async () => {
     if (!editTarget || !editNumber.trim() || editNumber.trim() === editTarget.employeeNumber) return;
     setEditError('');
-    const res = await fetch(`/api/employees/${editTarget.employeeNumber}`, {
+    const res = await fetch(`/api/employees/${editTarget.cardNumber}`, {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ employeeNumber: editNumber.trim() }),
@@ -88,7 +88,7 @@ export default function AdminPage() {
     await fetch('/api/employees/delete', {
       method: 'DELETE',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ employeeNumber: deleteTarget.employeeNumber }),
+      body: JSON.stringify({ cardNumber: deleteTarget.cardNumber }),
     });
     setDeleteTarget(null);
     fetchEmployees();
@@ -122,10 +122,10 @@ export default function AdminPage() {
             <Heading size="lg" mb={4} fontWeight="700">Transactions récentes</Heading>
             <VStack gap={3} w="full" align="stretch">
               {transactions.slice(0, 5).map((t, i) => (
-                <Flex key={t.id ?? `${t.employeeNumber}-${i}`} p={4} borderRadius="md" bg="bg.subtle" justify="space-between" align="center">
+                <Flex key={t.id ?? `${t.cardNumber}-${i}`} p={4} borderRadius="md" bg="bg.subtle" justify="space-between" align="center">
                   <VStack align="start" gap={0}>
                     <Text fontWeight="600">
-                      {employees.find((e) => e.employeeNumber === t.employeeNumber)?.fullName || t.employeeNumber}
+                      {employees.find((e) => e.cardNumber === t.cardNumber)?.employeeNumber || t.cardNumber}
                     </Text>
                     <Text fontSize="sm" color="fg.muted">
                       {new Date(t.timestamp).toLocaleString('fr-CA', { dateStyle: 'short', timeStyle: 'short' })}
@@ -172,7 +172,7 @@ export default function AdminPage() {
 
           {employees.map((emp) => (
             <Flex
-              key={emp.employeeNumber}
+              key={emp.cardNumber}
               w="full"
               py={5}
               px={6}
@@ -182,10 +182,10 @@ export default function AdminPage() {
               _hover={{ bg: 'bg.subtle' }}
             >
               <Text flex={1} fontSize={{ base: 'md', md: 'lg' }} color="fg.muted">
-                {emp.employeeNumber}
+                {emp.cardNumber}
               </Text>
               <Text flex={3} fontSize={{ base: 'md', md: 'lg' }} fontWeight="600">
-                {emp.fullName}
+                {emp.employeeNumber}
               </Text>
               <Text
                 flex={2}
@@ -238,10 +238,7 @@ export default function AdminPage() {
             </DialogHeader>
             <DialogBody>
               <VStack gap={4} align="stretch">
-                <Text fontSize="lg" color="fg.muted">{editTarget?.fullName}</Text>
-                <Text fontSize="sm" color="orange.500" fontWeight="600">
-                  Ce numéro doit correspondre au code-barres de la carte de l&apos;employé.
-                </Text>
+                <Text fontSize="lg" color="fg.muted">Carte #{editTarget?.cardNumber}</Text>
                 <Input
                   inputMode="numeric"
                   placeholder="Numéro d'employé"
@@ -297,8 +294,8 @@ export default function AdminPage() {
             <DialogBody>
               <Text fontSize="lg">
                 L&apos;employé{' '}
-                <Text as="span" fontWeight="700">{deleteTarget?.fullName}</Text>{' '}
-                (#{deleteTarget?.employeeNumber}) sera supprimé définitivement.
+                <Text as="span" fontWeight="700">{deleteTarget?.employeeNumber}</Text>{' '}
+                (#{deleteTarget?.cardNumber}) sera supprimé définitivement.
                 Cette action est irréversible.
               </Text>
             </DialogBody>

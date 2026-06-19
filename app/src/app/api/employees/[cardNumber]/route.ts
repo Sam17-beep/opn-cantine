@@ -7,20 +7,20 @@ const service = new EmployeeApplicationService(employeeRepository);
 
 export async function PATCH(
   request: NextRequest,
-  { params }: { params: Promise<{ employeeNumber: string }> }
+  { params }: { params: Promise<{ cardNumber: string }> }
 ) {
   if (!verifyAdminRequest(request)) return unauthorizedResponse();
 
-  const { employeeNumber: oldNumber } = await params;
+  const { cardNumber } = await params;
   const body = await request.json();
-  const { employeeNumber: newNumber } = body;
+  const { employeeNumber: newEmployeeNumber } = body;
 
-  if (!newNumber || typeof newNumber !== 'string' || !newNumber.trim()) {
+  if (!newEmployeeNumber || typeof newEmployeeNumber !== 'string' || !newEmployeeNumber.trim()) {
     return NextResponse.json({ error: 'employeeNumber is required' }, { status: 400 });
   }
 
   try {
-    const employee = await service.updateEmployeeNumber(oldNumber, newNumber.trim());
+    const employee = await service.updateEmployeeNumber(cardNumber, newEmployeeNumber.trim());
     if (!employee) {
       return NextResponse.json({ error: 'Employee not found' }, { status: 404 });
     }

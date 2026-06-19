@@ -50,7 +50,6 @@ interface Stats {
 
 interface Buyer {
   employeeNumber: string;
-  fullName: string;
   qty: number;
   revenue: number;
 }
@@ -681,7 +680,7 @@ export default function AnnouncementsPage() {
                 <VStack align="stretch" gap={2} maxH="320px" overflowY="auto">
                   {buyers.map((b) => (
                     <Flex key={b.employeeNumber} justify="space-between" align="center">
-                      <Text fontSize="sm" fontWeight="600">{b.fullName}</Text>
+                      <Text fontSize="sm" fontWeight="600">{b.employeeNumber}</Text>
                       <HStack gap={3}>
                         <Text fontSize="sm" fontWeight="700">x{b.qty}</Text>
                         <Text fontSize="xs" color="fg.muted">{b.revenue.toFixed(2)}$</Text>

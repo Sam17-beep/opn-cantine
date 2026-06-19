@@ -68,9 +68,9 @@ function getBalanceColor(value: number) {
 export default function TabPage({
   params,
 }: {
-  params: Promise<{ employeeNumber: string }>;
+  params: Promise<{ cardNumber: string }>;
 }) {
-  const { employeeNumber } = use(params);
+  const { cardNumber } = use(params);
   const router = useRouter();
 
   const [employee, setEmployee] = useState<Employee | null>(null);
@@ -86,7 +86,7 @@ export default function TabPage({
 
   const save = useSaveFlow({
     employee,
-    employeeNumber,
+    cardNumber,
     pendingTotal: cart.pendingTotal,
     scannedProducts: cart.scannedProducts,
     setLoading,
@@ -99,7 +99,7 @@ export default function TabPage({
   useEffect(() => {
     const fetchEmployee = async () => {
       const res = await fetch(
-        `/api/employees/lookup?employeeNumber=${encodeURIComponent(employeeNumber)}`
+        `/api/employees/lookup?cardNumber=${encodeURIComponent(cardNumber)}`
       );
       const data = await res.json();
       if (data.found) {
@@ -110,7 +110,7 @@ export default function TabPage({
     };
     fetchEmployee();
 
-    fetch(`/api/announcement?employeeNumber=${encodeURIComponent(employeeNumber)}`)
+    fetch(`/api/announcement?cardNumber=${encodeURIComponent(cardNumber)}`)
       .then((res) => res.ok ? res.json() : null)
       .then((data: AnnouncementEvent | null) => {
         if (data && isProductVisible(data) && data.product) {
@@ -119,7 +119,7 @@ export default function TabPage({
         }
       })
       .catch(() => null);
-  }, [employeeNumber, router]);
+  }, [cardNumber, router]);
 
   const handleConfirmReset = async () => {
     setResetOpen(false);
@@ -127,7 +127,7 @@ export default function TabPage({
     const res = await fetch('/api/employees/tab', {
       method: 'DELETE',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ employeeNumber }),
+      body: JSON.stringify({ cardNumber }),
     });
     if (res.ok) {
       const data = await res.json();
@@ -167,7 +167,7 @@ export default function TabPage({
               fontWeight="800"
               letterSpacing="-0.02em"
             >
-              {employee.fullName}
+              {employee.employeeNumber}
             </Heading>
           </VStack>
           <IconButton
@@ -404,7 +404,7 @@ export default function TabPage({
 
       <ResetModal
         open={resetOpen}
-        employeeName={employee.fullName}
+        employeeName={employee.employeeNumber}
         onOpenChange={setResetOpen}
         onConfirm={handleConfirmReset}
       />

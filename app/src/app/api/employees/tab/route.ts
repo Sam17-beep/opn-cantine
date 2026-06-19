@@ -6,17 +6,17 @@ const service = new EmployeeApplicationService(employeeRepository);
 
 export async function POST(request: NextRequest) {
   const body = await request.json();
-  const { employeeNumber, amount } = body;
+  const { cardNumber, amount } = body;
 
-  if (!employeeNumber || typeof amount !== 'number' || amount === 0) {
+  if (!cardNumber || typeof amount !== 'number' || amount === 0) {
     return NextResponse.json(
-      { error: 'employeeNumber and a non-zero amount are required' },
+      { error: 'cardNumber and a non-zero amount are required' },
       { status: 400 }
     );
   }
 
   try {
-    const employee = await service.addToTab(employeeNumber, amount);
+    const employee = await service.addToTab(cardNumber, amount);
     return NextResponse.json(employee);
   } catch (e: unknown) {
     const message = e instanceof Error ? e.message : 'Unknown error';
@@ -26,16 +26,16 @@ export async function POST(request: NextRequest) {
 
 export async function DELETE(request: NextRequest) {
   const body = await request.json();
-  const { employeeNumber } = body;
+  const { cardNumber } = body;
 
-  if (!employeeNumber) {
+  if (!cardNumber) {
     return NextResponse.json(
-      { error: 'employeeNumber is required' },
+      { error: 'cardNumber is required' },
       { status: 400 }
     );
   }
 
-  const employee = await service.resetTab(employeeNumber);
+  const employee = await service.resetTab(cardNumber);
 
   if (!employee) {
     return NextResponse.json({ error: 'Employee not found' }, { status: 404 });
