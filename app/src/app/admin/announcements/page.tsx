@@ -48,6 +48,13 @@ interface Stats {
   total: { qty: number; revenue: number };
 }
 
+interface Buyer {
+  employeeNumber: string;
+  fullName: string;
+  qty: number;
+  revenue: number;
+}
+
 type EventStatus = 'current' | 'future' | 'past' | 'draft';
 
 function localDate(): string {
@@ -265,6 +272,9 @@ export default function AnnouncementsPage() {
   const [overlapError, setOverlapError] = useState(false);
   const [form, setForm] = useState(EMPTY_FORM);
   const [deleteTarget, setDeleteTarget] = useState<AnnouncementEvent | null>(null);
+  const [buyersTarget, setBuyersTarget] = useState<AnnouncementEvent | null>(null);
+  const [buyers, setBuyers] = useState<Buyer[] | null>(null);
+  const [buyersLoading, setBuyersLoading] = useState(false);
 
   const fetchAll = useCallback(async () => {
     const [eventsRes, statsRes] = await Promise.all([
@@ -341,6 +351,19 @@ export default function AnnouncementsPage() {
     fetchAll();
   };
 
+  const openBuyers = async (event: AnnouncementEvent) => {
+    if (!event.product) return;
+    setBuyersTarget(event);
+    setBuyers(null);
+    setBuyersLoading(true);
+    const res = await fetch(`/api/announcement/buyers?name=${encodeURIComponent(event.product.name)}`);
+    if (res.ok) {
+      const data = await res.json();
+      setBuyers(data.buyers);
+    }
+    setBuyersLoading(false);
+  };
+
   const setField = (field: keyof typeof EMPTY_FORM, value: string | boolean) =>
     setForm((f) => ({ ...f, [field]: value }));
 
@@ -411,12 +434,23 @@ export default function AnnouncementsPage() {
                   </Box>
                   <Box w="80px" textAlign="center">
                     {event.product ? (
-                      <VStack gap={0}>
-                        <Text fontSize="lg" fontWeight="800">{productStats?.qty ?? 0}</Text>
-                        {productStats && productStats.qty > 0 && (
+                      productStats && productStats.qty > 0 ? (
+                        <VStack
+                          gap={0}
+                          cursor="pointer"
+                          onClick={() => openBuyers(event)}
+                          _hover={{ opacity: 0.7 }}
+                        >
+                          <Text fontSize="lg" fontWeight="800" textDecoration="underline" textDecorationStyle="dotted">
+                            {productStats.qty}
+                          </Text>
                           <Text fontSize="xs" color="fg.muted">{productStats.revenue.toFixed(2)}$</Text>
-                        )}
-                      </VStack>
+                        </VStack>
+                      ) : (
+                        <VStack gap={0}>
+                          <Text fontSize="lg" fontWeight="800">0</Text>
+                        </VStack>
+                      )
                     ) : (
                       <Text color="fg.muted">—</Text>
                     )}
@@ -620,6 +654,47 @@ export default function AnnouncementsPage() {
                 <Button flex={1} variant="outline" onClick={() => setDeleteTarget(null)}>Annuler</Button>
                 <Button flex={1} colorPalette="red" onClick={handleDelete}>Supprimer</Button>
               </HStack>
+            </DialogFooter>
+          </DialogContent>
+        </DialogPositioner>
+      </DialogRoot>
+
+      {/* Buyers list modal */}
+      <DialogRoot
+        open={!!buyersTarget}
+        onOpenChange={(e) => { if (!e.open) setBuyersTarget(null); }}
+        placement="center"
+        size="sm"
+      >
+        <DialogBackdrop />
+        <DialogPositioner>
+          <DialogContent p={6}>
+            <DialogHeader pb={2}>
+              <DialogTitle fontSize="lg" fontWeight="700">
+                Acheteurs — {buyersTarget?.product?.name}
+              </DialogTitle>
+            </DialogHeader>
+            <DialogBody py={4}>
+              {buyersLoading ? (
+                <Text color="fg.muted">Chargement...</Text>
+              ) : buyers && buyers.length > 0 ? (
+                <VStack align="stretch" gap={2} maxH="320px" overflowY="auto">
+                  {buyers.map((b) => (
+                    <Flex key={b.employeeNumber} justify="space-between" align="center">
+                      <Text fontSize="sm" fontWeight="600">{b.fullName}</Text>
+                      <HStack gap={3}>
+                        <Text fontSize="sm" fontWeight="700">x{b.qty}</Text>
+                        <Text fontSize="xs" color="fg.muted">{b.revenue.toFixed(2)}$</Text>
+                      </HStack>
+                    </Flex>
+                  ))}
+                </VStack>
+              ) : (
+                <Text color="fg.muted">Aucun acheteur.</Text>
+              )}
+            </DialogBody>
+            <DialogFooter>
+              <Button w="full" variant="outline" onClick={() => setBuyersTarget(null)}>Fermer</Button>
             </DialogFooter>
           </DialogContent>
         </DialogPositioner>

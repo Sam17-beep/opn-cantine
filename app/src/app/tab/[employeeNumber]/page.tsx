@@ -27,6 +27,7 @@ type AnnouncementEvent = {
   product?: AnnouncementProduct | null;
   salesStart?: string | null;
   salesEnd?: string | null;
+  purchasedQty?: number;
 };
 
 function localDateString(): string {
@@ -74,6 +75,7 @@ export default function TabPage({
 
   const [employee, setEmployee] = useState<Employee | null>(null);
   const [announcementProduct, setAnnouncementProduct] = useState<AnnouncementProduct | null>(null);
+  const [purchasedQty, setPurchasedQty] = useState(0);
   const [loading, setLoading] = useState(false);
   const [resetOpen, setResetOpen] = useState(false);
   const [unknownOpen, setUnknownOpen] = useState(false);
@@ -108,10 +110,13 @@ export default function TabPage({
     };
     fetchEmployee();
 
-    fetch('/api/announcement')
+    fetch(`/api/announcement?employeeNumber=${encodeURIComponent(employeeNumber)}`)
       .then((res) => res.ok ? res.json() : null)
       .then((data: AnnouncementEvent | null) => {
-        if (data && isProductVisible(data) && data.product) setAnnouncementProduct(data.product);
+        if (data && isProductVisible(data) && data.product) {
+          setAnnouncementProduct(data.product);
+          setPurchasedQty(data.purchasedQty ?? 0);
+        }
       })
       .catch(() => null);
   }, [employeeNumber, router]);
@@ -325,7 +330,7 @@ export default function TabPage({
           </Box>
 
           {/* Quick-add buttons */}
-          <HStack gap={3} w="full">
+          <HStack gap={3} w="full" align="start">
             <Button
               flex={1}
               h="auto"
@@ -340,21 +345,27 @@ export default function TabPage({
               Café (+1.00$)
             </Button>
             {announcementProduct && (
-              <Button
-                flex={1}
-                h="auto"
-                py={6}
-                variant="outline"
-                borderColor="#0068A2"
-                color="#0068A2"
-                _hover={{ bg: '#0068A210' }}
-                onClick={() => cart.addEvent(announcementProduct.name, announcementProduct.price)}
-                disabled={loading}
-                fontWeight="600"
-                fontSize={{ base: 'lg', md: 'xl' }}
-              >
-                {announcementProduct.name} (+{announcementProduct.price.toFixed(2)}$)
-              </Button>
+              <VStack flex={1} gap={1} align="stretch">
+                <Button
+                  h="auto"
+                  py={6}
+                  variant="outline"
+                  borderColor="#0068A2"
+                  color="#0068A2"
+                  _hover={{ bg: '#0068A210' }}
+                  onClick={() => cart.addEvent(announcementProduct.name, announcementProduct.price)}
+                  disabled={loading}
+                  fontWeight="600"
+                  fontSize={{ base: 'lg', md: 'xl' }}
+                >
+                  {announcementProduct.name} (+{announcementProduct.price.toFixed(2)}$)
+                </Button>
+                {purchasedQty > 0 && (
+                  <Text fontSize="sm" color="fg.muted" textAlign="center">
+                    Vous avez déjà acheté {purchasedQty} billet{purchasedQty > 1 ? 's' : ''}
+                  </Text>
+                )}
+              </VStack>
             )}
           </HStack>
 
