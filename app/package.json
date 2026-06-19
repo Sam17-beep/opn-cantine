@@ -9,7 +9,10 @@
     "lint": "eslint",
     "lint:fix": "eslint --fix",
     "format": "prettier --write .",
-    "format:check": "prettier --check ."
+    "format:check": "prettier --check .",
+    "backup:status": "tsx scripts/backup-status.ts",
+    "backup:export": "tsx scripts/backup-export.ts",
+    "backup:restore": "tsx scripts/backup-restore.ts"
   },
   "dependencies": {
     "@chakra-ui/react": "^3.32.0",
@@ -34,6 +37,7 @@
     "eslint-config-prettier": "^10.1.8",
     "eslint-plugin-prettier": "^5.5.5",
     "prettier": "^3.8.1",
+    "tsx": "^4.22.4",
     "typescript": "^5"
   }
 }
