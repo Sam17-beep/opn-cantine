@@ -1,7 +1,7 @@
 'use client';
 
-import { useEffect, useState, use } from 'react';
-import { useRouter } from 'next/navigation';
+import { useEffect, useState, useRef } from 'react';
+import { useRouter, usePathname } from 'next/navigation';
 import {
   Box,
   Heading,
@@ -21,6 +21,9 @@ import { ResetModal } from './components/ResetModal';
 import { EditProductModal } from './components/EditProductModal';
 import { UnknownProductModal } from './components/UnknownProductModal';
 import type { Employee, ScannedProduct } from './types';
+import { getCachedEmployee, putCachedEmployee } from '@/lib/infrastructure/offline/lookupCache';
+import { useOnlineStatus } from '@/lib/infrastructure/offline/connectivity';
+import { loadCartDraft, saveCartDraft, clearCartDraft } from '@/lib/infrastructure/offline/cartDraft';
 
 type AnnouncementProduct = { name: string; price: number };
 type AnnouncementEvent = {
@@ -65,15 +68,20 @@ function getBalanceColor(value: number) {
   };
 }
 
-export default function TabPage({
-  params,
-}: {
-  params: Promise<{ cardNumber: string }>;
-}) {
-  const { cardNumber } = use(params);
+export default function TabPage() {
+  // Deliberately read the card number from the live URL rather than the `params` prop:
+  // when offline, the service worker may have to fall back to a different cached
+  // navigation document (see public/sw.js) whose embedded params reflect whichever
+  // page was last cached, not the page actually requested. `usePathname()` always
+  // reflects the real browser URL, so the rest of this page (and the employee/cart
+  // lookups keyed off it) stay correct even when the served HTML doesn't match.
+  const pathname = usePathname();
+  const cardNumber = decodeURIComponent(pathname.split('/').pop() ?? '');
   const router = useRouter();
 
   const [employee, setEmployee] = useState<Employee | null>(null);
+  const [offlineMode, setOfflineMode] = useState(false);
+  const [offlineUnverified, setOfflineUnverified] = useState(false);
   const [announcementProduct, setAnnouncementProduct] = useState<AnnouncementProduct | null>(null);
   const [purchasedQty, setPurchasedQty] = useState(0);
   const [loading, setLoading] = useState(false);
@@ -81,6 +89,7 @@ export default function TabPage({
   const [unknownOpen, setUnknownOpen] = useState(false);
   const [editProduct, setEditProduct] = useState<ScannedProduct | null>(null);
   const [editQty, setEditQty] = useState(0);
+  const { isOnline } = useOnlineStatus();
 
   const cart = useCart(setUnknownOpen);
 
@@ -97,15 +106,34 @@ export default function TabPage({
   });
 
   useEffect(() => {
+    console.log('[DEBUG] fetchEmployee effect firing, cardNumber=', JSON.stringify(cardNumber), 'pathname=', pathname);
     const fetchEmployee = async () => {
-      const res = await fetch(
-        `/api/employees/lookup?cardNumber=${encodeURIComponent(cardNumber)}`
-      );
-      const data = await res.json();
-      if (data.found) {
-        setEmployee(data.employee);
-      } else {
-        router.push('/');
+      try {
+        const res = await fetch(
+          `/api/employees/lookup?cardNumber=${encodeURIComponent(cardNumber)}`
+        );
+        const data = await res.json();
+        console.log('[DEBUG] lookup result for', JSON.stringify(cardNumber), '=', JSON.stringify(data));
+        if (data.found) {
+          setEmployee(data.employee);
+          await putCachedEmployee(data.employee);
+        } else {
+          console.log('[DEBUG] pushing / because not found, cardNumber was', JSON.stringify(cardNumber));
+          router.push('/');
+        }
+      } catch {
+        // Network failure — fall back to a cached record (no live tab balance available
+        // offline by design). If it's not cached either, this kiosk simply hasn't seen this
+        // card before; accept it anyway rather than blocking a legitimate buyer; its real
+        // identity and tab are confirmed once the sale syncs back online (see commitSale).
+        const cached = await getCachedEmployee(cardNumber);
+        if (cached) {
+          setEmployee({ ...cached, tab: 0 });
+        } else {
+          setEmployee({ cardNumber, employeeNumber: cardNumber, tab: 0 });
+          setOfflineUnverified(true);
+        }
+        setOfflineMode(true);
       }
     };
     fetchEmployee();
@@ -121,6 +149,27 @@ export default function TabPage({
       .catch(() => null);
   }, [cardNumber, router]);
 
+  // Restore an in-progress sale if the kiosk reloaded mid-sale (e.g. rebooted during an
+  // outage) before it was saved. Only runs once per employee resolving.
+  const draftRestoredRef = useRef(false);
+  useEffect(() => {
+    if (!employee || draftRestoredRef.current) return;
+    draftRestoredRef.current = true;
+    loadCartDraft(cardNumber).then((draft) => {
+      if (!draft) return;
+      cart.setScannedProducts(draft.scannedProducts.map((p) => ({ ...p })));
+      cart.setPendingTotal(draft.pendingTotal);
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [employee, cardNumber]);
+
+  // Persist the in-progress cart on every change so it survives a reload.
+  useEffect(() => {
+    if (!employee) return;
+    if (cart.scannedProducts.length === 0 && cart.pendingTotal === 0) return;
+    saveCartDraft({ cardNumber, scannedProducts: cart.scannedProducts, pendingTotal: cart.pendingTotal });
+  }, [employee, cardNumber, cart.scannedProducts, cart.pendingTotal]);
+
   const handleConfirmReset = async () => {
     setResetOpen(false);
     setLoading(true);
@@ -134,6 +183,7 @@ export default function TabPage({
       setEmployee(data);
       cart.setPendingTotal(0);
       cart.setScannedProducts([]);
+      await clearCartDraft(cardNumber);
     }
     setLoading(false);
   };
@@ -158,6 +208,24 @@ export default function TabPage({
 
   return (
     <>
+      {!isOnline && (
+        <Box
+          position="fixed"
+          top={0}
+          left={0}
+          right={0}
+          bg="orange.500"
+          color="white"
+          py={2}
+          textAlign="center"
+          fontSize="sm"
+          fontWeight="600"
+          zIndex={10000}
+        >
+          Hors ligne — fonctionnement limité
+        </Box>
+      )}
+
       <Flex minH="100dvh" direction="column" px={8} py={6}>
         {/* Top bar */}
         <Flex justify="space-between" align="center">
@@ -169,6 +237,11 @@ export default function TabPage({
             >
               {employee.employeeNumber}
             </Heading>
+            {offlineUnverified && (
+              <Text fontSize="sm" color="orange.500" fontWeight="600">
+                Carte non vérifiée — identité confirmée à la synchronisation
+              </Text>
+            )}
           </VStack>
           <IconButton
             aria-label="Fermer"
@@ -282,52 +355,65 @@ export default function TabPage({
         {/* Main content */}
         <Flex flex={1} direction="column" justify="center" gap={6} py={4}>
           {/* Balance */}
-          <Box
-            w="full"
-            py={8}
-            borderRadius="2xl"
-            bg={balanceColor.bg}
-            textAlign="center"
-          >
-            <Text
-              fontSize={{ base: 'lg', md: 'xl' }}
-              fontWeight="500"
-              color={balanceColor.fg}
-              mb={3}
+          {offlineMode ? (
+            <Box w="full" py={8} borderRadius="2xl" bg="bg.subtle" textAlign="center">
+              <Text fontSize={{ base: 'lg', md: 'xl' }} fontWeight="500" color="fg.muted" mb={3}>
+                Solde non disponible hors ligne
+              </Text>
+              {hasPending && (
+                <Text fontSize={{ base: '3xl', md: '4xl' }} fontWeight="800" color="fg.muted">
+                  +{cart.pendingTotal.toFixed(2)}$ pour cette vente
+                </Text>
+              )}
+            </Box>
+          ) : (
+            <Box
+              w="full"
+              py={8}
+              borderRadius="2xl"
+              bg={balanceColor.bg}
+              textAlign="center"
             >
-              {hasPending ? 'Aperçu du solde' : 'Solde actuel'}
-            </Text>
-            <Text
-              fontSize={{ base: '7xl', md: '9xl' }}
-              fontWeight="800"
-              lineHeight="1"
-              color={balanceColor.fg}
-            >
-              {projectedTab.toFixed(2)}$
-            </Text>
-
-            <Text
-              fontSize={{ base: 'md', md: 'lg' }}
-              fontWeight="600"
-              mt={4}
-              color={pendingColor.fg}
-              visibility={hasPending ? 'visible' : 'hidden'}
-            >
-              {cart.pendingTotal > 0 ? '+' : ''}
-              {cart.pendingTotal.toFixed(2)}$ depuis {employee.tab.toFixed(2)}$
-            </Text>
-
-            {projectedTab > 75 && (
               <Text
-                fontSize={{ base: 'sm', md: 'md' }}
+                fontSize={{ base: 'lg', md: 'xl' }}
+                fontWeight="500"
+                color={balanceColor.fg}
+                mb={3}
+              >
+                {hasPending ? 'Aperçu du solde' : 'Solde actuel'}
+              </Text>
+              <Text
+                fontSize={{ base: '7xl', md: '9xl' }}
+                fontWeight="800"
+                lineHeight="1"
+                color={balanceColor.fg}
+              >
+                {projectedTab.toFixed(2)}$
+              </Text>
+
+              <Text
+                fontSize={{ base: 'md', md: 'lg' }}
                 fontWeight="600"
                 mt={4}
-                color="red.500"
+                color={pendingColor.fg}
+                visibility={hasPending ? 'visible' : 'hidden'}
               >
-                Votre solde dépasse 75$. Merci de payer votre dette.
+                {cart.pendingTotal > 0 ? '+' : ''}
+                {cart.pendingTotal.toFixed(2)}$ depuis {employee.tab.toFixed(2)}$
               </Text>
-            )}
-          </Box>
+
+              {projectedTab > 75 && (
+                <Text
+                  fontSize={{ base: 'sm', md: 'md' }}
+                  fontWeight="600"
+                  mt={4}
+                  color="red.500"
+                >
+                  Votre solde dépasse 75$. Merci de payer votre dette.
+                </Text>
+              )}
+            </Box>
+          )}
 
           {/* Quick-add buttons */}
           <HStack gap={3} w="full" align="start">
@@ -393,6 +479,8 @@ export default function TabPage({
               colorPalette="red"
               onClick={() => setResetOpen(true)}
               loading={loading}
+              disabled={offlineMode}
+              title={offlineMode ? 'Indisponible hors ligne' : undefined}
               fontWeight="600"
               fontSize={{ base: 'lg', md: 'xl' }}
             >
@@ -414,6 +502,7 @@ export default function TabPage({
         countdown={save.countdown}
         pendingTotal={cart.pendingTotal}
         projectedTab={projectedTab}
+        offlineMode={offlineMode}
         onCancel={save.cancelSave}
         onSave={() => {
           save.cancelSave();

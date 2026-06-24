@@ -1,6 +1,7 @@
 import { useState, useRef, useCallback } from 'react';
 import type { ChangeEvent, KeyboardEvent } from 'react';
 import type { ScannedProduct } from '../types';
+import { getCachedProduct, putCachedProduct } from '@/lib/infrastructure/offline/lookupCache';
 
 const RAPID_INPUT_THRESHOLD_MS = 80;
 const AUTO_SUBMIT_DELAY_MS = 300;
@@ -17,6 +18,22 @@ export function useCart(setUnknownOpen: (open: boolean) => void) {
   const rapidScanCountRef = useRef(0);
   const autoScanTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const lastAddRef = useRef(0);
+
+  const addProductToCart = useCallback((value: string, name: string, price: number, suffix: string) => {
+    setPendingTotal((prev) => prev + price);
+    setScannedProducts((prev) => {
+      const existing = prev.find((p) => p.barcode === value);
+      if (existing) {
+        return prev.map((p) =>
+          p.barcode === value ? { ...p, qty: p.qty + 1 } : p
+        );
+      }
+      return [...prev, { barcode: value, name, price, qty: 1 }];
+    });
+
+    setScanFeedback(`${name} — ${price.toFixed(2)}$${suffix}`);
+    setTimeout(() => setScanFeedback(''), 3000);
+  }, []);
 
   const handleProductScan = useCallback(
     async (barcode: string) => {
@@ -42,30 +59,25 @@ export function useCart(setUnknownOpen: (open: boolean) => void) {
           return;
         }
 
-        setPendingTotal((prev) => prev + product.price);
-        setScannedProducts((prev) => {
-          const existing = prev.find((p) => p.barcode === value);
-          if (existing) {
-            return prev.map((p) =>
-              p.barcode === value ? { ...p, qty: p.qty + 1 } : p
-            );
-          }
-          return [
-            ...prev,
-            { barcode: value, name: product.name, price: product.price, qty: 1 },
-          ];
-        });
-
-        setScanFeedback(`${product.name} — ${product.price.toFixed(2)}$`);
-        setTimeout(() => setScanFeedback(''), 3000);
+        await putCachedProduct(product);
+        addProductToCart(value, product.name, product.price, '');
       } catch {
-        setScanFeedback('Erreur de connexion');
-        setTimeout(() => setScanFeedback(''), 3000);
+        // Network failure — fall back to whatever this kiosk has scanned before. The
+        // cached stock count isn't trustworthy offline, so the "Rupture de stock" check
+        // is skipped here; a sale built on stale stock data still goes through, and
+        // resolves itself on the server when the sale syncs (see saleQueue/commitSale).
+        const cached = await getCachedProduct(value);
+        if (cached) {
+          addProductToCart(value, cached.name, cached.price, ' (hors ligne)');
+        } else {
+          setScanFeedback('Hors ligne — produit inconnu localement');
+          setTimeout(() => setScanFeedback(''), 3000);
+        }
       }
 
       setScanValue('');
     },
-    [setUnknownOpen]
+    [setUnknownOpen, addProductToCart]
   );
 
   const addCoffee = () => {

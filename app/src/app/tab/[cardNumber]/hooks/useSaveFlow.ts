@@ -1,6 +1,8 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
 import type { Dispatch, SetStateAction } from 'react';
 import type { Employee, ScannedProduct } from '../types';
+import { enqueueSale, QUEUED_SALE_TOAST_KEY } from '@/lib/infrastructure/offline/saleQueue';
+import { clearCartDraft } from '@/lib/infrastructure/offline/cartDraft';
 
 const INACTIVITY_TIMEOUT_MS = 15000;
 
@@ -39,42 +41,37 @@ export function useSaveFlow({
     if (!employee || pendingTotal === 0) return;
 
     setLoading(true);
-    const res = await fetch('/api/employees/tab', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ cardNumber, amount: pendingTotal }),
-    });
 
-    if (res.ok && scannedProducts.length > 0) {
-      await fetch('/api/products/decrement', {
+    const clientSaleId = crypto.randomUUID();
+    const items = scannedProducts.map((p) => ({
+      barcode: p.barcode,
+      name: p.name,
+      price: p.price,
+      quantity: p.qty,
+    }));
+    const payload = { clientSaleId, cardNumber, items, totalAmount: pendingTotal };
+
+    try {
+      const res = await fetch('/api/sales', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          items: scannedProducts.map((p) => ({
-            barcode: p.barcode,
-            quantity: p.qty,
-          })),
-        }),
+        body: JSON.stringify(payload),
       });
 
-      await fetch('/api/transactions', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          cardNumber,
-          totalAmount: pendingTotal,
-          items: scannedProducts.map((p) => ({
-            barcode: p.barcode,
-            name: p.name,
-            price: p.price,
-            quantity: p.qty,
-          })),
-        }),
-      }).catch(console.error);
-    }
+      if (!res.ok) throw new Error('Sale commit failed');
 
-    if (res.ok) router.push('/');
-    setLoading(false);
+      await clearCartDraft(cardNumber);
+      router.push('/');
+    } catch {
+      // Network failure (most likely WiFi drop) — queue locally and let the cashier
+      // move on; a background replay syncs it once connectivity returns.
+      await enqueueSale({ clientSaleId, cardNumber, items, totalAmount: pendingTotal });
+      await clearCartDraft(cardNumber);
+      sessionStorage.setItem(QUEUED_SALE_TOAST_KEY, '1');
+      router.push('/');
+    } finally {
+      setLoading(false);
+    }
   }, [employee, cardNumber, pendingTotal, scannedProducts, setLoading, router]);
 
   const cancelSave = useCallback(() => {

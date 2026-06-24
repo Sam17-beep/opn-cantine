@@ -12,6 +12,9 @@ import {
 import Image from 'next/image';
 import { useRouter } from 'next/navigation';
 import { useCallback, useEffect, useRef, useState } from 'react';
+import { putCachedEmployee, searchCachedEmployees } from '@/lib/infrastructure/offline/lookupCache';
+import { useOnlineStatus } from '@/lib/infrastructure/offline/connectivity';
+import { getPendingSales, QUEUED_SALE_TOAST_KEY } from '@/lib/infrastructure/offline/saleQueue';
 
 const CARD_CODE_LENGTH = 12;
 
@@ -48,14 +51,18 @@ export default function Home() {
   const [cardNumber, setCardNumber] = useState('');
   const [error, setError] = useState('');
   const [toastMsg, setToastMsg] = useState('');
+  const [infoMsg, setInfoMsg] = useState('');
   const [loading, setLoading] = useState(false);
   const [isSearchMode, setIsSearchMode] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [searchResults, setSearchResults] = useState<Employee[]>([]);
   const [announcement, setAnnouncement] = useState<Announcement | null>(null);
+  const [pendingSaleCount, setPendingSaleCount] = useState(0);
   const router = useRouter();
+  const { isOnline } = useOnlineStatus();
 
   const toastTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const infoTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const searchDebounceTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const submittingRef = useRef(false);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -65,6 +72,28 @@ export default function Home() {
     setToastMsg(msg);
     toastTimerRef.current = setTimeout(() => setToastMsg(''), 3000);
   }, []);
+
+  const showInfo = useCallback((msg: string) => {
+    if (infoTimerRef.current) clearTimeout(infoTimerRef.current);
+    setInfoMsg(msg);
+    infoTimerRef.current = setTimeout(() => setInfoMsg(''), 4000);
+  }, []);
+
+  // Surface the "saved offline" confirmation left by useSaveFlow after a queued sale,
+  // and keep the pending-sync count visible so unsynced data is never silently invisible.
+  useEffect(() => {
+    if (sessionStorage.getItem(QUEUED_SALE_TOAST_KEY)) {
+      sessionStorage.removeItem(QUEUED_SALE_TOAST_KEY);
+      showInfo('Vente enregistrée localement — sera synchronisée');
+    }
+
+    const refreshPendingCount = () => {
+      getPendingSales().then((sales) => setPendingSaleCount(sales.length));
+    };
+    refreshPendingCount();
+    const interval = setInterval(refreshPendingCount, 5000);
+    return () => clearInterval(interval);
+  }, [showInfo]);
 
   // Keep the hidden input focused at all times when not in search mode
   useEffect(() => {
@@ -113,6 +142,7 @@ export default function Home() {
       const data = await res.json();
 
       if (data.found) {
+        await putCachedEmployee(data.employee);
         router.push(`/tab/${encodeURIComponent(value)}`);
       } else {
         router.push(
@@ -120,7 +150,13 @@ export default function Home() {
         );
       }
     } catch {
-      setError('Erreur de connexion. Réessayez.');
+      // Network truly failed (most likely offline) — accept any well-formed card scan
+      // rather than blocking the cashier just because this kiosk hasn't personally seen
+      // it before. Identity is verified for real once the sale syncs back online; refusing
+      // a legitimate buyer here would defeat the point of staying open during an outage.
+      // Deliberately distinct from the `found: false` branch above, which only triggers
+      // when the server actually answered "no such card."
+      router.push(`/tab/${encodeURIComponent(value)}`);
     } finally {
       setLoading(false);
       submittingRef.current = false;
@@ -155,14 +191,34 @@ export default function Home() {
       } else {
         setSearchResults([]);
       }
-    } catch (err) {
-      console.error(err);
-      setSearchResults([]);
+    } catch {
+      // Offline — fall back to whatever this kiosk has cached locally (fine at ~100
+      // employees scale) instead of leaving the search dead.
+      const cached = await searchCachedEmployees(q.trim());
+      setSearchResults(cached.map((e) => ({ ...e, tab: 0 })));
     }
   }, []);
 
   return (
     <>
+      {!isOnline && (
+        <Box
+          position="fixed"
+          top={0}
+          left={0}
+          right={0}
+          bg="orange.500"
+          color="white"
+          py={2}
+          textAlign="center"
+          fontSize="sm"
+          fontWeight="600"
+          zIndex={10000}
+        >
+          Hors ligne — fonctionnement limité
+        </Box>
+      )}
+
       {toastMsg && (
         <Box
           position="fixed"
@@ -180,6 +236,45 @@ export default function Home() {
           shadow="lg"
         >
           {toastMsg}
+        </Box>
+      )}
+
+      {infoMsg && (
+        <Box
+          position="fixed"
+          top={6}
+          left="50%"
+          transform="translateX(-50%)"
+          bg="gray.700"
+          color="white"
+          px={6}
+          py={3}
+          borderRadius="md"
+          fontSize="md"
+          fontWeight="medium"
+          zIndex={9999}
+          shadow="lg"
+        >
+          {infoMsg}
+        </Box>
+      )}
+
+      {pendingSaleCount > 0 && (
+        <Box
+          position="fixed"
+          bottom={6}
+          left={6}
+          bg="gray.700"
+          color="white"
+          px={4}
+          py={2}
+          borderRadius="md"
+          fontSize="sm"
+          fontWeight="medium"
+          zIndex={9999}
+          shadow="lg"
+        >
+          {pendingSaleCount} vente{pendingSaleCount > 1 ? 's' : ''} en attente de synchronisation
         </Box>
       )}
     <Flex

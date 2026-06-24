@@ -23,6 +23,7 @@ interface SaveModalProps {
   countdown: number;
   pendingTotal: number;
   projectedTab: number;
+  offlineMode?: boolean;
   onCancel: () => void;
   onSave: () => void;
 }
@@ -32,6 +33,7 @@ export function SaveModal({
   countdown,
   pendingTotal,
   projectedTab,
+  offlineMode,
   onCancel,
   onSave,
 }: SaveModalProps) {
@@ -67,7 +69,7 @@ export function SaveModal({
                     Nouveau solde
                   </Text>
                   <Text fontSize="lg" fontWeight="700">
-                    {projectedTab.toFixed(2)}$
+                    {offlineMode ? 'Non disponible hors ligne' : `${projectedTab.toFixed(2)}$`}
                   </Text>
                 </HStack>
               </VStack>
@@ -86,6 +88,11 @@ export function SaveModal({
                 <Text fontSize="sm" color="fg.muted">
                   Sauvegarde automatique dans {countdown}s
                 </Text>
+                {offlineMode && (
+                  <Text fontSize="sm" color="orange.500" fontWeight="600">
+                    Hors ligne — sera synchronisée une fois la connexion rétablie
+                  </Text>
+                )}
               </VStack>
             </VStack>
           </DialogBody>
