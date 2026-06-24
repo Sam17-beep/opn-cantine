@@ -6,11 +6,11 @@ const service = new EmployeeApplicationService(employeeRepository);
 
 export async function POST(request: NextRequest) {
   const body = await request.json();
-  const { employeeNumber, fullName, initialTab } = body;
+  const { cardNumber, employeeNumber, initialTab } = body;
 
-  if (!employeeNumber) {
+  if (!cardNumber) {
     return NextResponse.json(
-      { error: 'employeeNumber is required' },
+      { error: 'cardNumber is required' },
       { status: 400 }
     );
   }
@@ -20,11 +20,11 @@ export async function POST(request: NextRequest) {
       ? initialTab
       : 0;
 
-  const resolvedFullName =
-    typeof fullName === 'string' && fullName.trim() ? fullName.trim() : employeeNumber;
+  const resolvedEmployeeNumber =
+    typeof employeeNumber === 'string' && employeeNumber.trim() ? employeeNumber.trim() : cardNumber;
 
   try {
-    const employee = await service.create(employeeNumber, resolvedFullName, parsedInitialTab);
+    const employee = await service.create(cardNumber, resolvedEmployeeNumber, parsedInitialTab);
     return NextResponse.json(employee, { status: 201 });
   } catch (e: unknown) {
     const message = e instanceof Error ? e.message : 'Unknown error';

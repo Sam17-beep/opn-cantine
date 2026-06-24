@@ -22,9 +22,9 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const { employeeNumber, items, totalAmount } = body;
+    const { cardNumber, items, totalAmount } = body;
 
-    if (!employeeNumber || typeof totalAmount !== 'number' || !Array.isArray(items)) {
+    if (!cardNumber || typeof totalAmount !== 'number' || !Array.isArray(items)) {
       return NextResponse.json(
         { error: 'Invalid transaction payload' },
         { status: 400 }
@@ -37,7 +37,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ success: true, message: 'No items to log' });
     }
 
-    const result = await service.logTransaction(employeeNumber, items, totalAmount);
+    const result = await service.logTransaction(cardNumber, items, totalAmount);
 
     return NextResponse.json({ success: true, transaction: result });
   } catch (error: unknown) {

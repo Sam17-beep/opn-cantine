@@ -4,49 +4,49 @@ import { IEmployeeRepository } from '@/lib/domain/ports/employee.repository.port
 export class EmployeeApplicationService {
   constructor(private readonly employeeRepository: IEmployeeRepository) {}
 
-  async lookup(employeeNumber: string) {
-    return this.employeeRepository.findByEmployeeNumber(employeeNumber);
+  async lookup(cardNumber: string) {
+    return this.employeeRepository.findByCardNumber(cardNumber);
   }
 
   async search(query: string) {
-    return this.employeeRepository.searchByName(query);
+    return this.employeeRepository.searchByEmployeeNumber(query);
   }
 
-  async create(employeeNumber: string, fullName: string, initialTab: number = 0) {
+  async create(cardNumber: string, employeeNumber: string, initialTab: number = 0) {
     const existing =
-      await this.employeeRepository.findByEmployeeNumber(employeeNumber);
+      await this.employeeRepository.findByCardNumber(cardNumber);
     if (existing) {
       throw new Error('Employee already exists');
     }
-    const employee = EmployeeEntity.create(employeeNumber, fullName, initialTab);
+    const employee = EmployeeEntity.create(cardNumber, employeeNumber, initialTab);
     return this.employeeRepository.save(employee);
   }
 
-  async addToTab(employeeNumber: string, amount: number) {
+  async addToTab(cardNumber: string, amount: number) {
     const employee =
-      await this.employeeRepository.findByEmployeeNumber(employeeNumber);
+      await this.employeeRepository.findByCardNumber(cardNumber);
     if (!employee) {
       throw new Error('Employee not found');
     }
     return this.employeeRepository.updateTab(
-      employeeNumber,
+      cardNumber,
       employee.tab + amount
     );
   }
 
-  async resetTab(employeeNumber: string) {
-    return this.employeeRepository.updateTab(employeeNumber, 0);
+  async resetTab(cardNumber: string) {
+    return this.employeeRepository.updateTab(cardNumber, 0);
   }
 
   async getAll() {
     return this.employeeRepository.findAll();
   }
 
-  async delete(employeeNumber: string) {
-    return this.employeeRepository.delete(employeeNumber);
+  async delete(cardNumber: string) {
+    return this.employeeRepository.delete(cardNumber);
   }
 
-  async updateEmployeeNumber(oldNumber: string, newNumber: string) {
-    return this.employeeRepository.updateEmployeeNumber(oldNumber, newNumber);
+  async updateEmployeeNumber(cardNumber: string, newEmployeeNumber: string) {
+    return this.employeeRepository.updateEmployeeNumber(cardNumber, newEmployeeNumber);
   }
 }

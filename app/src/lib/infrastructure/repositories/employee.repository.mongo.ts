@@ -10,14 +10,14 @@ export class MongoEmployeeRepository implements IEmployeeRepository {
     return db.collection<Employee>(this.collectionName);
   }
 
-  async findByEmployeeNumber(employeeNumber: string): Promise<Employee | null> {
+  async findByCardNumber(cardNumber: string): Promise<Employee | null> {
     const col = await this.collection();
-    return col.findOne({ employeeNumber });
+    return col.findOne({ cardNumber });
   }
 
-  async searchByName(query: string): Promise<Employee[]> {
+  async searchByEmployeeNumber(query: string): Promise<Employee[]> {
     const col = await this.collection();
-    return col.find({ fullName: { $regex: query, $options: 'i' } }).toArray();
+    return col.find({ employeeNumber: { $regex: query, $options: 'i' } }).toArray();
   }
 
   async save(employee: Employee): Promise<Employee> {
@@ -27,12 +27,12 @@ export class MongoEmployeeRepository implements IEmployeeRepository {
   }
 
   async updateTab(
-    employeeNumber: string,
+    cardNumber: string,
     tab: number
   ): Promise<Employee | null> {
     const col = await this.collection();
     const result = await col.findOneAndUpdate(
-      { employeeNumber },
+      { cardNumber },
       { $set: { tab } },
       { returnDocument: 'after' }
     );
@@ -44,28 +44,22 @@ export class MongoEmployeeRepository implements IEmployeeRepository {
     return col.find().toArray();
   }
 
-  async delete(employeeNumber: string): Promise<boolean> {
+  async delete(cardNumber: string): Promise<boolean> {
     const col = await this.collection();
-    const result = await col.deleteOne({ employeeNumber });
+    const result = await col.deleteOne({ cardNumber });
     return result.deletedCount === 1;
   }
 
-  async updateEmployeeNumber(oldNumber: string, newNumber: string): Promise<Employee | null> {
-    const db = await getDb();
-    const col = db.collection<Employee>(this.collectionName);
-    const conflict = await col.findOne({ employeeNumber: newNumber });
+  async updateEmployeeNumber(cardNumber: string, newEmployeeNumber: string): Promise<Employee | null> {
+    const col = await this.collection();
+    const conflict = await col.findOne({ employeeNumber: newEmployeeNumber, cardNumber: { $ne: cardNumber } });
     if (conflict) throw new Error('Employee number already in use');
     const result = await col.findOneAndUpdate(
-      { employeeNumber: oldNumber },
-      { $set: { employeeNumber: newNumber } },
+      { cardNumber },
+      { $set: { employeeNumber: newEmployeeNumber } },
       { returnDocument: 'after' }
     );
-    if (!result) return null;
-    await db.collection('transactions').updateMany(
-      { employeeNumber: oldNumber },
-      { $set: { employeeNumber: newNumber } }
-    );
-    return result;
+    return result ?? null;
   }
 }
 

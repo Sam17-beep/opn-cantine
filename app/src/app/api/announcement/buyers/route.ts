@@ -5,7 +5,6 @@ import { employeeRepository } from '@/lib/infrastructure/repositories/employee.r
 
 interface Buyer {
   employeeNumber: string;
-  fullName: string;
   qty: number;
   revenue: number;
 }
@@ -24,7 +23,7 @@ export async function GET(request: NextRequest) {
     { $match: { 'items.barcode': '_event_', 'items.name': name } },
     {
       $group: {
-        _id: '$employeeNumber',
+        _id: '$cardNumber',
         qty: { $sum: '$items.quantity' },
         revenue: { $sum: { $multiply: ['$items.price', '$items.quantity'] } },
       },
@@ -32,16 +31,15 @@ export async function GET(request: NextRequest) {
   ]).toArray();
 
   const employees = await employeeRepository.findAll();
-  const nameByNumber = new Map(employees.map((e) => [e.employeeNumber, e.fullName]));
+  const byCardNumber = new Map(employees.map((e) => [e.cardNumber, e.employeeNumber]));
 
   const buyers: Buyer[] = rows
     .map((row) => ({
-      employeeNumber: row._id,
-      fullName: nameByNumber.get(row._id) ?? row._id,
+      employeeNumber: byCardNumber.get(row._id) ?? row._id,
       qty: row.qty,
       revenue: row.revenue,
     }))
-    .sort((a, b) => b.qty - a.qty || a.fullName.localeCompare(b.fullName));
+    .sort((a, b) => b.qty - a.qty || a.employeeNumber.localeCompare(b.employeeNumber));
 
   return NextResponse.json({ buyers });
 }

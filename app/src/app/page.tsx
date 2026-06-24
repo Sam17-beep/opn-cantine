@@ -16,8 +16,8 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 const CARD_CODE_LENGTH = 12;
 
 type Employee = {
+  cardNumber: string;
   employeeNumber: string;
-  fullName: string;
   tab: number;
 };
 
@@ -45,7 +45,7 @@ function isBannerVisible(event: AnnouncementEvent): boolean {
 }
 
 export default function Home() {
-  const [employeeNumber, setEmployeeNumber] = useState('');
+  const [cardNumber, setCardNumber] = useState('');
   const [error, setError] = useState('');
   const [toastMsg, setToastMsg] = useState('');
   const [loading, setLoading] = useState(false);
@@ -82,7 +82,7 @@ export default function Home() {
   }, [isSearchMode]);
 
   const handleSubmit = useCallback(async (number?: string) => {
-    const value = (number ?? employeeNumber).trim();
+    const value = (number ?? cardNumber).trim();
     if (submittingRef.current) return;
 
     if (!value) {
@@ -92,7 +92,7 @@ export default function Home() {
 
     if (value.length !== CARD_CODE_LENGTH) {
       showToast('Code incomplet. Veuillez rescanner votre carte.');
-      setEmployeeNumber('');
+      setCardNumber('');
       return;
     }
 
@@ -102,7 +102,7 @@ export default function Home() {
 
     try {
       const res = await fetch(
-        `/api/employees/lookup?employeeNumber=${encodeURIComponent(value)}`
+        `/api/employees/lookup?cardNumber=${encodeURIComponent(value)}`
       );
 
       if (!res.ok) {
@@ -116,7 +116,7 @@ export default function Home() {
         router.push(`/tab/${encodeURIComponent(value)}`);
       } else {
         router.push(
-          `/register?employeeNumber=${encodeURIComponent(value)}`
+          `/register?cardNumber=${encodeURIComponent(value)}`
         );
       }
     } catch {
@@ -125,7 +125,7 @@ export default function Home() {
       setLoading(false);
       submittingRef.current = false;
     }
-  }, [employeeNumber, router, showToast]);
+  }, [cardNumber, router, showToast]);
 
   useEffect(() => {
     fetch('/api/announcement')
@@ -233,13 +233,13 @@ export default function Home() {
           {/* Hidden input to capture card reader scan */}
           <Input
             ref={inputRef}
-            value={employeeNumber}
+            value={cardNumber}
             onBlur={() => {
               if (!isSearchMode) inputRef.current?.focus();
             }}
             onChange={e => {
               const val = e.target.value.replace(/\D/g, '');
-              setEmployeeNumber(val);
+              setCardNumber(val);
               setError('');
             }}
             onKeyDown={e => {
@@ -300,13 +300,13 @@ export default function Home() {
           <VStack w="full" align="stretch" maxH="300px" overflowY="auto" gap={2}>
             {searchResults.map((emp) => (
               <Button
-                key={emp.employeeNumber}
+                key={emp.cardNumber}
                 variant="outline"
                 size="lg"
                 justifyContent="flex-start"
-                onClick={() => router.push(`/tab/${encodeURIComponent(emp.employeeNumber)}`)}
+                onClick={() => router.push(`/tab/${encodeURIComponent(emp.cardNumber)}`)}
               >
-                {emp.fullName}
+                {emp.employeeNumber}
               </Button>
             ))}
             {searchQuery.trim().length > 0 && searchResults.length === 0 && (
@@ -322,7 +322,7 @@ export default function Home() {
               setIsSearchMode(false);
               setSearchQuery('');
               setSearchResults([]);
-              setEmployeeNumber('');
+              setCardNumber('');
               setError('');
             }}
           >

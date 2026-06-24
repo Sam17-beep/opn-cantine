@@ -1,6 +1,6 @@
 export interface Employee {
+  cardNumber: string;
   employeeNumber: string;
-  fullName: string;
   tab: number;
 }
 

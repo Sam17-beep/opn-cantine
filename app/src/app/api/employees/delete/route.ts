@@ -9,16 +9,16 @@ export async function DELETE(request: NextRequest) {
   if (!verifyAdminRequest(request)) return unauthorizedResponse();
 
   const body = await request.json();
-  const { employeeNumber } = body;
+  const { cardNumber } = body;
 
-  if (!employeeNumber) {
+  if (!cardNumber) {
     return NextResponse.json(
-      { error: 'employeeNumber is required' },
+      { error: 'cardNumber is required' },
       { status: 400 }
     );
   }
 
-  const deleted = await service.delete(employeeNumber);
+  const deleted = await service.delete(cardNumber);
 
   if (!deleted) {
     return NextResponse.json(

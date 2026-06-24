@@ -6,7 +6,7 @@ const INACTIVITY_TIMEOUT_MS = 15000;
 
 interface Params {
   employee: Employee | null;
-  employeeNumber: string;
+  cardNumber: string;
   pendingTotal: number;
   scannedProducts: ScannedProduct[];
   setLoading: Dispatch<SetStateAction<boolean>>;
@@ -18,7 +18,7 @@ interface Params {
 
 export function useSaveFlow({
   employee,
-  employeeNumber,
+  cardNumber,
   pendingTotal,
   scannedProducts,
   setLoading,
@@ -42,7 +42,7 @@ export function useSaveFlow({
     const res = await fetch('/api/employees/tab', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ employeeNumber, amount: pendingTotal }),
+      body: JSON.stringify({ cardNumber, amount: pendingTotal }),
     });
 
     if (res.ok && scannedProducts.length > 0) {
@@ -61,7 +61,7 @@ export function useSaveFlow({
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          employeeNumber,
+          cardNumber,
           totalAmount: pendingTotal,
           items: scannedProducts.map((p) => ({
             barcode: p.barcode,
@@ -75,7 +75,7 @@ export function useSaveFlow({
 
     if (res.ok) router.push('/');
     setLoading(false);
-  }, [employee, employeeNumber, pendingTotal, scannedProducts, setLoading, router]);
+  }, [employee, cardNumber, pendingTotal, scannedProducts, setLoading, router]);
 
   const cancelSave = useCallback(() => {
     if (timerRef.current) {
