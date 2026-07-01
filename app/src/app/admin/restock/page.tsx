@@ -15,8 +15,8 @@ interface ProductRestock {
   currentQty: number;
   price: number;
   totalUnitsSold: number;
-  avgUnitsPerDay: number;
-  daysRemaining: number | null;
+  avgUnitsPerWeek: number;
+  weeksRemaining: number | null;
   urgency: Urgency;
 }
 
@@ -32,15 +32,15 @@ const URGENCY_CONFIG: Record<Urgency, { label: string; dot: string; pillBg: stri
   unknown:  { label: 'Inconnu', dot: '⚪', pillBg: 'bg.subtle', pillColor: 'fg.muted' },
 };
 
-function daysLabel(p: ProductRestock): string {
+function weeksLabel(p: ProductRestock): string {
   if (p.currentQty === 0) return 'Rupture';
-  if (p.daysRemaining === null) return '—';
-  if (p.daysRemaining === 0) return '< 1 jour';
-  if (p.daysRemaining === 1) return '1 jour';
-  return `${p.daysRemaining} jours`;
+  if (p.weeksRemaining === null) return '—';
+  if (p.weeksRemaining === 0) return '< 1 semaine';
+  if (p.weeksRemaining === 1) return '1 semaine';
+  return `${p.weeksRemaining} semaines`;
 }
 
-function DaysPill({ product }: { product: ProductRestock }) {
+function WeeksPill({ product }: { product: ProductRestock }) {
   const cfg = URGENCY_CONFIG[product.urgency];
   return (
     <Box
@@ -54,7 +54,7 @@ function DaysPill({ product }: { product: ProductRestock }) {
       display="inline-block"
       whiteSpace="nowrap"
     >
-      {daysLabel(product)}
+      {weeksLabel(product)}
     </Box>
   );
 }
@@ -72,8 +72,8 @@ function UrgencySection({ urgency, products }: { urgency: Urgency; products: Pro
       <Flex w="full" py={2} px={4} borderBottom="2px solid" borderColor="border">
         <Text flex={3} fontSize="sm" fontWeight="700" color="fg.muted">Produit</Text>
         <Text flex={1} fontSize="sm" fontWeight="700" color="fg.muted" textAlign="right">Stock</Text>
-        <Text flex={1.5} fontSize="sm" fontWeight="700" color="fg.muted" textAlign="right">Ventes/jour</Text>
-        <Text flex={2} fontSize="sm" fontWeight="700" color="fg.muted" textAlign="right">Jours restants</Text>
+        <Text flex={1.5} fontSize="sm" fontWeight="700" color="fg.muted" textAlign="right">Ventes/semaine</Text>
+        <Text flex={2} fontSize="sm" fontWeight="700" color="fg.muted" textAlign="right">Semaines restantes</Text>
       </Flex>
       {products.map((p) => (
         <Flex
@@ -97,10 +97,10 @@ function UrgencySection({ urgency, products }: { urgency: Urgency; products: Pro
             {p.currentQty}
           </Text>
           <Text flex={1.5} fontSize={{ base: 'sm', md: 'md' }} color="fg.muted" textAlign="right">
-            {p.avgUnitsPerDay > 0 ? `${p.avgUnitsPerDay}/jour` : '—'}
+            {p.avgUnitsPerWeek > 0 ? `${p.avgUnitsPerWeek}/semaine` : '—'}
           </Text>
           <Flex flex={2} justify="flex-end">
-            <DaysPill product={p} />
+            <WeeksPill product={p} />
           </Flex>
         </Flex>
       ))}
