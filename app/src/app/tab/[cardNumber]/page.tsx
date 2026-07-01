@@ -203,7 +203,7 @@ export default function TabPage({
         />
 
         {/* Fixed height container for scan feedback and products list */}
-        <Box minH="120px" w="full" position="relative" zIndex={10}>
+        <Box minH="160px" w="full" position="relative" zIndex={10}>
           {/* Scan feedback */}
           <Box
             position="absolute"
@@ -228,9 +228,10 @@ export default function TabPage({
           {/* Scanned products list */}
           <VStack
             w="full"
-            maxH="120px"
+            maxH="200px"
             overflowY="auto"
-            gap={1}
+            gap={2}
+            align="stretch"
             opacity={cart.scannedProducts.length > 0 && !cart.scanFeedback ? 1 : 0}
             visibility={
               cart.scannedProducts.length > 0 && !cart.scanFeedback
@@ -252,28 +253,54 @@ export default function TabPage({
               },
             }}
           >
+            {cart.scannedProducts.length > 0 && (
+              <Text fontSize="sm" color="fg.muted" textAlign="center" pb={1}>
+                Touchez un article pour le modifier
+              </Text>
+            )}
             {cart.scannedProducts.map((p) => (
               <Flex
                 key={p.barcode}
                 w="full"
-                py={2}
-                px={4}
+                py={4}
+                px={5}
+                align="center"
                 justify="space-between"
-                borderRadius="md"
+                borderRadius="xl"
+                borderWidth="1px"
+                borderColor="border"
                 bg="bg.subtle"
                 cursor="pointer"
+                transition="all 0.15s"
                 _hover={{ bg: 'bg.muted' }}
+                _active={{ bg: 'bg.muted', transform: 'scale(0.98)' }}
                 onClick={() => {
                   setEditProduct(p);
                   setEditQty(p.qty);
                 }}
               >
-                <Text fontSize="sm" fontWeight="600">
+                <Text fontSize={{ base: 'md', md: 'lg' }} fontWeight="700">
                   {p.name} {p.qty > 1 ? `x${p.qty}` : ''}
                 </Text>
-                <Text fontSize="sm" fontWeight="600">
-                  {(p.price * p.qty).toFixed(2)}$
-                </Text>
+                <HStack gap={3}>
+                  <Text fontSize={{ base: 'md', md: 'lg' }} fontWeight="700">
+                    {(p.price * p.qty).toFixed(2)}$
+                  </Text>
+                  <Flex
+                    align="center"
+                    gap={1}
+                    px={3}
+                    py={1}
+                    borderRadius="full"
+                    bg="bg.muted"
+                    color="fg.muted"
+                    fontSize="sm"
+                    fontWeight="600"
+                    flexShrink={0}
+                  >
+                    ✎ Modifier
+                  </Flex>
+                </HStack>
               </Flex>
             ))}
           </VStack>
