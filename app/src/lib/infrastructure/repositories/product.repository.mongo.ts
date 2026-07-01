@@ -98,8 +98,8 @@ export class MongoProductRepository implements IProductRepository {
   ): Promise<Product | null> {
     const col = await this.collection();
     const result = await col.findOneAndUpdate(
-      { _id: id, quantity: { $gte: amount } },
-      { $inc: { quantity: -amount } },
+      { _id: id },
+      [{ $set: { quantity: { $max: [0, { $subtract: ['$quantity', amount] }] } } }],
       { returnDocument: 'after' }
     );
     if (!result) return null;
