@@ -4,7 +4,8 @@ import {
   Button,
   HStack,
   VStack,
-  Input,
+  Text,
+  IconButton,
   DialogRoot,
   DialogPositioner,
   DialogContent,
@@ -49,21 +50,39 @@ export function EditProductModal({
             </DialogTitle>
           </DialogHeader>
           <DialogBody>
-            <Input
-              type="number"
-              min={1}
-              value={qty}
-              onChange={(e) => {
-                const val = parseInt(e.target.value, 10);
-                if (!isNaN(val) && val >= 1) onQtyChange(val);
-              }}
-              fontSize="3xl"
-              fontWeight="800"
-              textAlign="center"
-              py={6}
-              h="auto"
-              autoFocus
-            />
+            <HStack justify="center" gap={6}>
+              <IconButton
+                aria-label="Diminuer la quantité"
+                variant="outline"
+                onClick={() => onQtyChange(Math.max(1, qty - 1))}
+                disabled={qty <= 1}
+                boxSize="16"
+                fontSize="4xl"
+                fontWeight="800"
+                borderRadius="2xl"
+              >
+                −
+              </IconButton>
+              <Text
+                fontSize="5xl"
+                fontWeight="800"
+                minW="20"
+                textAlign="center"
+              >
+                {qty}
+              </Text>
+              <IconButton
+                aria-label="Augmenter la quantité"
+                variant="outline"
+                onClick={() => onQtyChange(qty + 1)}
+                boxSize="16"
+                fontSize="4xl"
+                fontWeight="800"
+                borderRadius="2xl"
+              >
+                +
+              </IconButton>
+            </HStack>
           </DialogBody>
           <DialogFooter pt={5}>
             <VStack gap={3} w="full">

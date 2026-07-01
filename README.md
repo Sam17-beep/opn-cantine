@@ -19,6 +19,18 @@ BASIC_AUTH_PASSWORD=<your-strong-password>
 ADMIN_PIN=<your-pin>
 ```
 
+### Local development (optional)
+
+To open the tab page without a physical card reader, enable dev mode. When
+`NEXT_PUBLIC_DEV_MODE` is `true`, a button appears on the home page that opens the tab
+page for `NEXT_PUBLIC_DEV_CARD_NUMBER`, auto-creating a default employee if it doesn't
+exist. Leave these unset/false in production.
+
+```
+NEXT_PUBLIC_DEV_MODE=true
+NEXT_PUBLIC_DEV_CARD_NUMBER=000000000000
+```
+
 ## Getting started
 
 ```bash

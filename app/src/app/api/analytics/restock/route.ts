@@ -5,11 +5,28 @@ import { verifyAdminRequest, unauthorizedResponse } from '@/lib/infrastructure/a
 
 const WINDOW_DAYS = 30;
 const MS_PER_DAY = 24 * 60 * 60 * 1000;
+const WORK_DAYS_PER_WEEK = 5;
 
 type Urgency = 'critical' | 'warning' | 'ok' | 'unknown';
 
 function urgencyOrder(u: Urgency): number {
   return { critical: 0, warning: 1, ok: 2, unknown: 3 }[u];
+}
+
+// Count operating days (Mon-Fri) in [startMs, endMs], inclusive by calendar day.
+function countWeekdays(startMs: number, endMs: number): number {
+  const cur = new Date(startMs);
+  cur.setHours(0, 0, 0, 0);
+  const end = new Date(endMs);
+  end.setHours(0, 0, 0, 0);
+
+  let count = 0;
+  while (cur.getTime() <= end.getTime()) {
+    const dow = cur.getDay();
+    if (dow >= 1 && dow <= 5) count++;
+    cur.setDate(cur.getDate() + 1);
+  }
+  return count;
 }
 
 export async function GET(request: NextRequest) {
@@ -61,22 +78,26 @@ export async function GET(request: NextRequest) {
 
       const hasSalesInWindow = totalUnitsSold > 0;
 
-      let avgUnitsPerDay = 0;
-      let daysRemaining: number | null = null;
+      let avgUnitsPerWeek = 0;
+      let weeksRemaining: number | null = null;
 
       if (hasSalesInWindow && firstTs !== undefined) {
-        const daysSinceFirstSale = Math.max(1, (now - firstTs) / MS_PER_DAY);
-        const windowDays = Math.min(WINDOW_DAYS, daysSinceFirstSale);
-        avgUnitsPerDay = totalUnitsSold / windowDays;
-        daysRemaining = avgUnitsPerDay > 0 ? p.quantity / avgUnitsPerDay : null;
+        // Effective measurement start: 30-day window start, or first sale if more recent.
+        const effectiveStart = Math.max(now - WINDOW_DAYS * MS_PER_DAY, firstTs);
+        // Only weekdays count as operating days (weekends have no sales).
+        const weekdaysElapsed = Math.max(1, countWeekdays(effectiveStart, now));
+        const avgUnitsPerWeekday = totalUnitsSold / weekdaysElapsed;
+        avgUnitsPerWeek = avgUnitsPerWeekday * WORK_DAYS_PER_WEEK;
+        weeksRemaining =
+          avgUnitsPerWeek > 0 ? p.quantity / avgUnitsPerWeek : null;
       }
 
       let urgency: Urgency;
-      if (p.quantity === 0 || (daysRemaining !== null && daysRemaining <= 3)) {
+      if (p.quantity === 0 || (weeksRemaining !== null && weeksRemaining <= 1)) {
         urgency = 'critical';
-      } else if (daysRemaining !== null && daysRemaining <= 7) {
+      } else if (weeksRemaining !== null && weeksRemaining <= 2) {
         urgency = 'warning';
-      } else if (daysRemaining !== null) {
+      } else if (weeksRemaining !== null) {
         urgency = 'ok';
       } else {
         urgency = 'unknown';
@@ -88,20 +109,20 @@ export async function GET(request: NextRequest) {
         currentQty: p.quantity,
         price: p.price,
         totalUnitsSold,
-        avgUnitsPerDay: Math.round(avgUnitsPerDay * 10) / 10,
-        daysRemaining: daysRemaining !== null ? Math.floor(daysRemaining) : null,
+        avgUnitsPerWeek: Math.round(avgUnitsPerWeek * 10) / 10,
+        weeksRemaining: weeksRemaining !== null ? Math.floor(weeksRemaining) : null,
         urgency,
       };
     });
 
-    // Sort by urgency group, then by daysRemaining ascending (most urgent first)
+    // Sort by urgency group, then by weeksRemaining ascending (most urgent first)
     productData.sort((a, b) => {
       const urgencyDiff = urgencyOrder(a.urgency) - urgencyOrder(b.urgency);
       if (urgencyDiff !== 0) return urgencyDiff;
-      if (a.daysRemaining === null && b.daysRemaining === null) return a.name.localeCompare(b.name);
-      if (a.daysRemaining === null) return 1;
-      if (b.daysRemaining === null) return -1;
-      return a.daysRemaining - b.daysRemaining;
+      if (a.weeksRemaining === null && b.weeksRemaining === null) return a.name.localeCompare(b.name);
+      if (a.weeksRemaining === null) return 1;
+      if (b.weeksRemaining === null) return -1;
+      return a.weeksRemaining - b.weeksRemaining;
     });
 
     const summary = {

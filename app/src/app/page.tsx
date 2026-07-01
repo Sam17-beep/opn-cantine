@@ -15,6 +15,9 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 
 const CARD_CODE_LENGTH = 12;
 
+const DEV_MODE = process.env.NEXT_PUBLIC_DEV_MODE === 'true';
+const DEV_CARD_NUMBER = process.env.NEXT_PUBLIC_DEV_CARD_NUMBER || '000000000000';
+
 type Employee = {
   cardNumber: string;
   employeeNumber: string;
@@ -160,6 +163,40 @@ export default function Home() {
       setSearchResults([]);
     }
   }, []);
+
+  const handleDevOpenTab = useCallback(async () => {
+    const card = DEV_CARD_NUMBER;
+    setError('');
+    setLoading(true);
+    try {
+      const res = await fetch(
+        `/api/employees/lookup?cardNumber=${encodeURIComponent(card)}`
+      );
+      const data = res.ok ? await res.json() : { found: false };
+
+      if (!data.found) {
+        const createRes = await fetch('/api/employees', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            cardNumber: card,
+            employeeNumber: 'DEV',
+            initialTab: 0,
+          }),
+        });
+        if (!createRes.ok) {
+          setError("Impossible de créer l'employé de développement.");
+          return;
+        }
+      }
+
+      router.push(`/tab/${encodeURIComponent(card)}`);
+    } catch {
+      setError('Erreur de connexion. Réessayez.');
+    } finally {
+      setLoading(false);
+    }
+  }, [router]);
 
   return (
     <>
@@ -343,6 +380,22 @@ export default function Home() {
       >
         Administration
       </Button>
+
+      {DEV_MODE && (
+        <Button
+          variant="outline"
+          size="sm"
+          colorPalette="orange"
+          fontSize="md"
+          position="absolute"
+          bottom={6}
+          left={6}
+          onClick={handleDevOpenTab}
+          disabled={loading}
+        >
+          Dev: Ouvrir un compte
+        </Button>
+      )}
     </Flex>
     </>
   );
