@@ -203,7 +203,7 @@ export default function TabPage({
         />
 
         {/* Fixed height container for scan feedback and products list */}
-        <Box minH="160px" w="full" position="relative" zIndex={10}>
+        <Box minH="120px" w="full" position="relative" zIndex={10}>
           {/* Scan feedback */}
           <Box
             position="absolute"
@@ -228,9 +228,9 @@ export default function TabPage({
           {/* Scanned products list */}
           <VStack
             w="full"
-            maxH="200px"
+            maxH="120px"
             overflowY="auto"
-            gap={2}
+            gap={1}
             align="stretch"
             opacity={cart.scannedProducts.length > 0 && !cart.scanFeedback ? 1 : 0}
             visibility={
@@ -254,7 +254,7 @@ export default function TabPage({
             }}
           >
             {cart.scannedProducts.length > 0 && (
-              <Text fontSize="sm" color="fg.muted" textAlign="center" pb={1}>
+              <Text fontSize="xs" color="fg.muted" textAlign="center" pb={0.5}>
                 Touchez un article pour le modifier
               </Text>
             )}
@@ -262,11 +262,11 @@ export default function TabPage({
               <Flex
                 key={p.barcode}
                 w="full"
-                py={4}
-                px={5}
+                py={2}
+                px={4}
                 align="center"
                 justify="space-between"
-                borderRadius="xl"
+                borderRadius="lg"
                 borderWidth="1px"
                 borderColor="border"
                 bg="bg.subtle"
@@ -279,22 +279,22 @@ export default function TabPage({
                   setEditQty(p.qty);
                 }}
               >
-                <Text fontSize={{ base: 'md', md: 'lg' }} fontWeight="700">
+                <Text fontSize={{ base: 'sm', md: 'md' }} fontWeight="700">
                   {p.name} {p.qty > 1 ? `x${p.qty}` : ''}
                 </Text>
-                <HStack gap={3}>
-                  <Text fontSize={{ base: 'md', md: 'lg' }} fontWeight="700">
+                <HStack gap={2}>
+                  <Text fontSize={{ base: 'sm', md: 'md' }} fontWeight="700">
                     {(p.price * p.qty).toFixed(2)}$
                   </Text>
                   <Flex
                     align="center"
                     gap={1}
-                    px={3}
-                    py={1}
+                    px={2}
+                    py={0.5}
                     borderRadius="full"
                     bg="bg.muted"
                     color="fg.muted"
-                    fontSize="sm"
+                    fontSize="xs"
                     fontWeight="600"
                     flexShrink={0}
                   >
