@@ -36,12 +36,6 @@ export function useCart(setUnknownOpen: (open: boolean) => void) {
 
         const product = data.product;
 
-        if (product.quantity <= 0) {
-          setScanFeedback(`${product.name} — Rupture de stock`);
-          setTimeout(() => setScanFeedback(''), 3000);
-          return;
-        }
-
         setPendingTotal((prev) => prev + product.price);
         setScannedProducts((prev) => {
           const existing = prev.find((p) => p.barcode === value);
