@@ -396,7 +396,7 @@ export default function TabPage({
               fontWeight="600"
               fontSize={{ base: 'lg', md: 'xl' }}
             >
-              Remettre à zéro
+              J&apos;ai payé ma dette
             </Button>
           </Flex>
         </Flex>

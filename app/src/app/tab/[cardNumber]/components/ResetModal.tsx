@@ -34,7 +34,7 @@ export function ResetModal({ open, employeeName, onOpenChange, onConfirm }: Rese
         <DialogContent p={8}>
           <DialogHeader pb={4}>
             <DialogTitle fontSize="2xl" fontWeight="700">
-              Remettre à zéro
+              J&apos;ai payé ma dette
             </DialogTitle>
           </DialogHeader>
           <DialogBody>
