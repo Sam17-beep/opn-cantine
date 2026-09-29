@@ -30,3 +30,97 @@ a {
 button {
   touch-action: manipulation;
 }
+
+/* Chakra's color-mode tokens are redeclared on descendants, not only the root. */
+html[data-app-theme='halloween'],
+html[data-app-theme='halloween'] * {
+  --background: #18121e;
+  --foreground: #f5e9dc;
+  --chakra-colors-bg: #211827;
+  --chakra-colors-bg-subtle: #291e30;
+  --chakra-colors-bg-muted: #35273d;
+  --chakra-colors-bg-emphasized: #46334e;
+  --chakra-colors-bg-panel: #251b2c;
+  --chakra-colors-bg-inverted: #f5e9dc;
+  --chakra-colors-fg: #f5e9dc;
+  --chakra-colors-fg-muted: #c4afc5;
+  --chakra-colors-fg-subtle: #b39bb4;
+  --chakra-colors-border: #68516e;
+  --chakra-colors-border-muted: #49354f;
+  --chakra-colors-border-subtle: #3b2b42;
+  --chakra-colors-border-emphasized: #a17b9e;
+  --chakra-colors-gray-solid: #dda261;
+  --chakra-colors-gray-contrast: #24170f;
+  --chakra-colors-gray-fg: #efbd87;
+  --chakra-colors-gray-subtle: #291e30;
+  --chakra-colors-gray-muted: #35273d;
+  --chakra-colors-gray-emphasized: #46334e;
+  --chakra-colors-gray-focus-ring: #efbd87;
+}
+
+html[data-app-theme='halloween'],
+html[data-app-theme='halloween'] body {
+  color-scheme: dark;
+}
+
+html[data-app-theme='halloween'] body {
+  isolation: isolate;
+  background-image:
+    radial-gradient(ellipse at top right, #34213e 0, transparent 55%),
+    radial-gradient(ellipse at bottom left, #392519 0, transparent 50%);
+  background-attachment: fixed;
+}
+
+/* Fixed scenery stays behind content and never catches a tap or scanner focus. */
+html[data-app-theme='halloween'] body::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  opacity: 0.38;
+  filter: saturate(0.65);
+  background-image:
+    url('/themes/halloween-scarecrow.svg'),
+    url('/themes/halloween-pumpkins.svg'), url('/themes/halloween-bats.svg');
+  background-repeat: no-repeat;
+  background-position:
+    left bottom,
+    right bottom,
+    right 3% top 2%;
+  background-size:
+    clamp(130px, 22vw, 290px) auto,
+    clamp(170px, 30vw, 400px) auto,
+    clamp(150px, 25vw, 320px) auto;
+}
+
+.theme-preview[data-preview-theme='classic'] {
+  color: #1a1a2e;
+  background: #f8f9fa;
+  border-color: #e4e4e7;
+}
+
+.theme-preview[data-preview-theme='halloween'] {
+  color: #f5e9dc;
+  background: linear-gradient(125deg, #18121e, #34213e);
+  border-color: #68516e;
+}
+
+.theme-preview-scenery {
+  height: 110px;
+  margin-bottom: 1rem;
+  opacity: 0.65;
+  filter: saturate(0.65);
+  background:
+    url('/themes/halloween-scarecrow.svg') left bottom / auto 110px no-repeat,
+    url('/themes/halloween-pumpkins.svg') right bottom / auto 100px no-repeat,
+    url('/themes/halloween-bats.svg') center top / auto 85px no-repeat;
+}
+
+html[data-app-theme='halloween'] .recharts-cartesian-axis-tick-value {
+  fill: var(--chakra-colors-fg-muted);
+}
+
+html[data-app-theme='halloween'] .recharts-default-tooltip {
+  color: #24170f;
+}

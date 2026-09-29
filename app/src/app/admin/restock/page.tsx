@@ -142,17 +142,17 @@ export default function RestockPage() {
               </Text>
             )}
             {data.summary.warning > 0 && (
-              <Text fontWeight="700" color="yellow.600" fontSize={{ base: 'md', md: 'lg' }}>
+              <Text fontWeight="700" color="yellow.600" _dark={{ color: 'yellow.300' }} fontSize={{ base: 'md', md: 'lg' }}>
                 🟡 {data.summary.warning} en attention
               </Text>
             )}
             {data.summary.ok > 0 && (
-              <Text fontWeight="600" color="green.600" fontSize={{ base: 'md', md: 'lg' }}>
+              <Text fontWeight="600" color="green.600" _dark={{ color: 'green.300' }} fontSize={{ base: 'md', md: 'lg' }}>
                 🟢 {data.summary.ok} OK
               </Text>
             )}
             {data.summary.critical === 0 && data.summary.warning === 0 && (
-              <Text fontWeight="600" color="green.600" fontSize={{ base: 'md', md: 'lg' }}>
+              <Text fontWeight="600" color="green.600" _dark={{ color: 'green.300' }} fontSize={{ base: 'md', md: 'lg' }}>
                 Tous les stocks sont suffisants ✓
               </Text>
             )}

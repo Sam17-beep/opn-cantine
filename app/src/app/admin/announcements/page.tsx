@@ -415,7 +415,7 @@ export default function AnnouncementsPage() {
                   <Box flex={3} minW={0}>
                     <Text fontWeight="700" fontSize="md" truncate>{event.title}</Text>
                     <Text fontSize="sm" color="fg.muted" truncate>{event.description}</Text>
-                    <Text fontSize="xs" fontWeight="600" color={cfg.textColor} mt="2px">{cfg.label}</Text>
+                    <Text fontSize="xs" fontWeight="600" color={cfg.textColor} _dark={{ color: status === 'current' ? 'green.300' : status === 'future' ? 'blue.300' : 'fg.muted' }} mt="2px">{cfg.label}</Text>
                   </Box>
                   <Box flex={2}>
                     <Text fontSize="sm" color={event.bannerStart || event.bannerEnd ? 'fg' : 'fg.muted'}>

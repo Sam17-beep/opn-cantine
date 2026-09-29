@@ -118,6 +118,27 @@ src/
         └── repositories/                # MongoDB repository
 ```
 
+## Seasonal themes
+
+In **Admin → Thèmes**, select **Classique** or **Halloween**, then choose
+**Appliquer le thème**. The preview does not change the live app until saved.
+Classique is the default and restores the original appearance.
+
+The choice is shared across devices and survives reloads: MongoDB stores it in
+`settings`, in the document with `_id: "appearance"`. `GET /api/theme` reads the
+current theme; `PUT /api/theme` requires an admin session and accepts only known
+theme IDs. No migration is needed.
+
+Open devices refresh the theme every minute while visible and when returning
+to the app. A failed refresh keeps the last loaded appearance without
+interrupting sales; synchronization errors are logged and shown in the theme
+admin page. Halloween uses dark plum surfaces, muted amber accents, and
+illustrated pumpkins, a scarecrow, and bats in the background.
+The responsive scenery stays behind the content, never catches taps, and adds
+no animation. Prices and announcements are unchanged; red/green status meanings
+are preserved with dark-mode contrast. Classique always restores light mode,
+regardless of the device's system appearance.
+
 ## Recording a sale
 
 Every sale goes through a single endpoint, `POST /api/sales`, which writes the

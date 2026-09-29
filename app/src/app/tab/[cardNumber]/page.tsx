@@ -359,6 +359,7 @@ export default function TabPage({
                   borderColor="#0068A2"
                   color="#0068A2"
                   _hover={{ bg: '#0068A210' }}
+                  _dark={{ color: 'blue.300', borderColor: 'blue.300', _hover: { bg: 'blue.subtle' } }}
                   onClick={() => cart.addEvent(announcementProduct.name, announcementProduct.price)}
                   disabled={loading}
                   fontWeight="600"
