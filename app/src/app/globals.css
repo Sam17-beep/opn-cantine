@@ -63,27 +63,33 @@ html[data-app-theme='halloween'] body {
   color-scheme: dark;
 }
 
-html[data-app-theme='halloween'] body {
+html:is([data-app-theme='halloween'], [data-app-theme='winter']) body {
   isolation: isolate;
-  background-image:
-    radial-gradient(ellipse at top right, #34213e 0, transparent 55%),
-    radial-gradient(ellipse at bottom left, #392519 0, transparent 50%);
   background-attachment: fixed;
 }
 
+html[data-app-theme='halloween'] body {
+  background-image:
+    radial-gradient(ellipse at top right, #34213e 0, transparent 55%),
+    radial-gradient(ellipse at bottom left, #392519 0, transparent 50%);
+}
+
 /* Fixed scenery stays behind content and never catches a tap or scanner focus. */
-html[data-app-theme='halloween'] body::before {
+html:is([data-app-theme='halloween'], [data-app-theme='winter']) body::before {
   content: '';
   position: fixed;
   inset: 0;
   z-index: -1;
   pointer-events: none;
+  background-repeat: no-repeat;
+}
+
+html[data-app-theme='halloween'] body::before {
   opacity: 0.38;
   filter: saturate(0.65);
   background-image:
     url('/themes/halloween-scarecrow.svg'),
     url('/themes/halloween-pumpkins.svg'), url('/themes/halloween-bats.svg');
-  background-repeat: no-repeat;
   background-position:
     left bottom,
     right bottom,
@@ -109,6 +115,9 @@ html[data-app-theme='halloween'] body::before {
 .theme-preview-scenery {
   height: 110px;
   margin-bottom: 1rem;
+}
+
+.theme-preview[data-preview-theme='halloween'] .theme-preview-scenery {
   opacity: 0.65;
   filter: saturate(0.65);
   background:
@@ -123,4 +132,64 @@ html[data-app-theme='halloween'] .recharts-cartesian-axis-tick-value {
 
 html[data-app-theme='halloween'] .recharts-default-tooltip {
   color: #24170f;
+}
+
+html[data-app-theme='winter'],
+html[data-app-theme='winter'] * {
+  --background: #edf6fb;
+  --foreground: #173b4a;
+  --chakra-colors-bg: #fbfdff;
+  --chakra-colors-bg-subtle: #e3f0f5;
+  --chakra-colors-bg-muted: #d4e7ee;
+  --chakra-colors-bg-emphasized: #bdd8e1;
+  --chakra-colors-bg-panel: #fbfdff;
+  --chakra-colors-bg-inverted: #173b4a;
+  --chakra-colors-fg: #173b4a;
+  --chakra-colors-fg-muted: #4b6572;
+  --chakra-colors-fg-subtle: #566f7b;
+  --chakra-colors-border: #a4c3cc;
+  --chakra-colors-border-muted: #c5dce4;
+  --chakra-colors-border-subtle: #d9e9ee;
+  --chakra-colors-border-emphasized: #688f9b;
+  --chakra-colors-gray-solid: #215747;
+  --chakra-colors-gray-contrast: #ffffff;
+  --chakra-colors-gray-fg: #215747;
+  --chakra-colors-gray-subtle: #e1f0ea;
+  --chakra-colors-gray-muted: #c8e1d6;
+  --chakra-colors-gray-emphasized: #acd0be;
+  --chakra-colors-gray-focus-ring: #215747;
+}
+
+html[data-app-theme='winter'] body {
+  background-image:
+    radial-gradient(ellipse at top right, #c7e0ed 0, transparent 55%),
+    radial-gradient(ellipse at bottom left, #e3efe9 0, transparent 50%);
+}
+
+html[data-app-theme='winter'] body::before {
+  opacity: 0.75;
+  background-image:
+    url('/themes/winter-snowman.svg'), url('/themes/winter-tree.svg'),
+    url('/themes/winter-snowflakes.svg');
+  background-position:
+    left bottom,
+    right bottom,
+    right 3% top 2%;
+  background-size:
+    clamp(140px, 24vw, 300px) auto,
+    clamp(150px, 26vw, 340px) auto,
+    clamp(160px, 28vw, 350px) auto;
+}
+
+.theme-preview[data-preview-theme='winter'] {
+  color: #173b4a;
+  background: linear-gradient(125deg, #edf6fb, #c7e0ed);
+  border-color: #a4c3cc;
+}
+
+.theme-preview[data-preview-theme='winter'] .theme-preview-scenery {
+  background:
+    url('/themes/winter-snowman.svg') left bottom / auto 105px no-repeat,
+    url('/themes/winter-tree.svg') right bottom / auto 110px no-repeat,
+    url('/themes/winter-snowflakes.svg') center top / auto 95px no-repeat;
 }

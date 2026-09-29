@@ -35,35 +35,41 @@ function mount() {
   );
 }
 
-it('previews a selection without applying it, saves explicitly, and can restore classic', async () => {
-  fetchMock.mockResolvedValueOnce(new Response('{"theme":"classic"}'));
-  mount();
-  const select = screen.getByRole<HTMLSelectElement>('combobox', {
-    name: 'Thème de l’application',
-  });
-  await waitFor(() => expect(select.disabled).toBe(false));
-  const apply = screen.getByRole<HTMLButtonElement>('button', {
-    name: 'Appliquer le thème',
-  });
-  expect(apply.disabled).toBe(true);
-  fireEvent.change(select, { target: { value: 'halloween' } });
-  expect(screen.getByText(/Une nuit d’Halloween/)).toBeTruthy();
-  expect(document.documentElement.dataset.appTheme).toBe('classic');
-  expect(fetchMock).toHaveBeenCalledTimes(1);
+it.each([
+  { theme: 'halloween', description: /Une nuit d’Halloween/ },
+  { theme: 'winter', description: /Un décor enneigé/ },
+])(
+  'previews $theme without applying it, saves explicitly, and can restore classic',
+  async ({ theme, description }) => {
+    fetchMock.mockResolvedValueOnce(new Response('{"theme":"classic"}'));
+    mount();
+    const select = screen.getByRole<HTMLSelectElement>('combobox', {
+      name: 'Thème de l’application',
+    });
+    await waitFor(() => expect(select.disabled).toBe(false));
+    const apply = screen.getByRole<HTMLButtonElement>('button', {
+      name: 'Appliquer le thème',
+    });
+    expect(apply.disabled).toBe(true);
+    fireEvent.change(select, { target: { value: theme } });
+    expect(screen.getByText(description)).toBeTruthy();
+    expect(document.documentElement.dataset.appTheme).toBe('classic');
+    expect(fetchMock).toHaveBeenCalledTimes(1);
 
-  fetchMock.mockResolvedValueOnce(new Response('{"theme":"halloween"}'));
-  fireEvent.click(apply);
-  await screen.findByText(/Thème enregistré/);
-  expect(document.documentElement.dataset.appTheme).toBe('halloween');
-  expect(apply.disabled).toBe(true);
+    fetchMock.mockResolvedValueOnce(new Response(JSON.stringify({ theme })));
+    fireEvent.click(apply);
+    await screen.findByText(/Thème enregistré/);
+    expect(document.documentElement.dataset.appTheme).toBe(theme);
+    expect(apply.disabled).toBe(true);
 
-  fireEvent.change(select, { target: { value: 'classic' } });
-  fetchMock.mockResolvedValueOnce(new Response('{"theme":"classic"}'));
-  fireEvent.click(apply);
-  await waitFor(() =>
-    expect(document.documentElement.dataset.appTheme).toBe('classic')
-  );
-});
+    fireEvent.change(select, { target: { value: 'classic' } });
+    fetchMock.mockResolvedValueOnce(new Response('{"theme":"classic"}'));
+    fireEvent.click(apply);
+    await waitFor(() =>
+      expect(document.documentElement.dataset.appTheme).toBe('classic')
+    );
+  }
+);
 
 it('disables saving when loading fails and exposes a retry', async () => {
   fetchMock.mockResolvedValueOnce(new Response('{}', { status: 500 }));

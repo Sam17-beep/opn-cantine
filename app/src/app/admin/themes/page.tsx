@@ -9,7 +9,12 @@ import {
   Text,
   VStack,
 } from '@chakra-ui/react';
-import { THEMES, isThemeId, type ThemeId } from '@/lib/domain/theme';
+import {
+  THEMES,
+  getThemeDefinition,
+  isThemeId,
+  type ThemeId,
+} from '@/lib/domain/theme';
 import { useTheme } from '@/components/ThemeProvider';
 
 export default function ThemesPage() {
@@ -17,6 +22,7 @@ export default function ThemesPage() {
   const [selection, setSelection] = useState<ThemeId | null>(null);
   const [saved, setSaved] = useState(false);
   const selected = selection ?? theme;
+  const selectedTheme = getThemeDefinition(selected);
 
   async function handleSave(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -72,7 +78,7 @@ export default function ThemesPage() {
             borderWidth="1px"
             borderRadius="xl"
           >
-            {selected === 'halloween' ? (
+            {selected !== 'classic' ? (
               <Box className="theme-preview-scenery" aria-hidden="true" />
             ) : (
               <Text fontSize="3xl" aria-hidden="true" mb={2}>
@@ -80,13 +86,11 @@ export default function ThemesPage() {
               </Text>
             )}
             <Text fontWeight="700" fontSize="xl" mb={2}>
-              {selected === 'halloween'
-                ? 'Halloween'
-                : 'Bienvenue à la cantine'}
+              {selected === 'classic'
+                ? 'Bienvenue à la cantine'
+                : selectedTheme.label}
             </Text>
-            <Text id="theme-description">
-              {THEMES.find(option => option.id === selected)?.description}
-            </Text>
+            <Text id="theme-description">{selectedTheme.description}</Text>
           </Box>
           {!loaded && !error && <Text role="status">Chargement du thème…</Text>}
           {error && (

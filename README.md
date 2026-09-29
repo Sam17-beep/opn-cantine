@@ -120,7 +120,7 @@ src/
 
 ## Seasonal themes
 
-In **Admin → Thèmes**, select **Classique** or **Halloween**, then choose
+In **Admin → Thèmes**, select **Classique**, **Halloween**, or **Hiver / Noël**, then choose
 **Appliquer le thème**. The preview does not change the live app until saved.
 Classique is the default and restores the original appearance.
 
@@ -134,10 +134,14 @@ to the app. A failed refresh keeps the last loaded appearance without
 interrupting sales; synchronization errors are logged and shown in the theme
 admin page. Halloween uses dark plum surfaces, muted amber accents, and
 illustrated pumpkins, a scarecrow, and bats in the background.
+Hiver / Noël (`winter`) uses frosty blue surfaces, evergreen accents, a decorated
+Christmas tree, presents, a snowman, and snowflakes. It uses light mode and keeps
+the centered Cantine title without adding a subtitle.
 The responsive scenery stays behind the content, never catches taps, and adds
 no animation. Prices and announcements are unchanged; red/green status meanings
 are preserved with dark-mode contrast. Classique always restores light mode,
-regardless of the device's system appearance.
+regardless of the device's system appearance. The theme registry defines each
+theme's color mode and browser toolbar color alongside its label and description.
 
 ## Recording a sale
 

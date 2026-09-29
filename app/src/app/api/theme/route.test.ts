@@ -51,19 +51,22 @@ describe('/api/theme', () => {
     expect(await response.json()).toEqual({ theme: 'classic' });
   });
 
-  it('persists Halloween for all clients and allows restoring classic', async () => {
-    const response = await PUT(request({ theme: 'halloween' }));
-    expect(response.status).toBe(200);
-    expect(await response.json()).toEqual({ theme: 'halloween' });
-    expect(await new MongoThemeRepository().getTheme()).toBe('halloween');
-    expect(await (await GET()).json()).toEqual({ theme: 'halloween' });
+  it.each(['halloween', 'winter'])(
+    'persists %s for all clients and allows restoring classic',
+    async theme => {
+      const response = await PUT(request({ theme }));
+      expect(response.status).toBe(200);
+      expect(await response.json()).toEqual({ theme });
+      expect(await new MongoThemeRepository().getTheme()).toBe(theme);
+      expect(await (await GET()).json()).toEqual({ theme });
 
-    expect((await PUT(request({ theme: 'classic' }))).status).toBe(200);
-    expect(await (await GET()).json()).toEqual({ theme: 'classic' });
-    expect(await (await getDb()).collection('settings').countDocuments()).toBe(
-      1
-    );
-  });
+      expect((await PUT(request({ theme: 'classic' }))).status).toBe(200);
+      expect(await (await GET()).json()).toEqual({ theme: 'classic' });
+      expect(
+        await (await getDb()).collection('settings').countDocuments()
+      ).toBe(1);
+    }
+  );
 
   it('rejects unauthenticated writes without changing the current theme', async () => {
     const response = await PUT(request({ theme: 'halloween' }, false));

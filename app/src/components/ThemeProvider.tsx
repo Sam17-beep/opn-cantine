@@ -8,7 +8,12 @@ import {
   useRef,
   useState,
 } from 'react';
-import { DEFAULT_THEME, isThemeId, type ThemeId } from '@/lib/domain/theme';
+import {
+  DEFAULT_THEME,
+  getThemeDefinition,
+  isThemeId,
+  type ThemeId,
+} from '@/lib/domain/theme';
 
 interface ThemeContextValue {
   theme: ThemeId;
@@ -125,14 +130,11 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
   }, [invalidateReads, refresh]);
 
   useEffect(() => {
+    const definition = getThemeDefinition(theme);
     document.documentElement.dataset.appTheme = theme;
-    document.documentElement.dataset.theme =
-      theme === 'halloween' ? 'dark' : 'light';
+    document.documentElement.dataset.theme = definition.colorMode;
     const themeColor = document.querySelector('meta[name="theme-color"]');
-    themeColor?.setAttribute(
-      'content',
-      theme === 'halloween' ? '#18121e' : '#ffffff'
-    );
+    themeColor?.setAttribute('content', definition.themeColor);
   }, [theme]);
 
   return (

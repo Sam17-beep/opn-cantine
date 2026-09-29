@@ -29,6 +29,9 @@ function Controls() {
       <button disabled={saving} onClick={() => void saveTheme('classic')}>
         Classic
       </button>
+      <button disabled={saving} onClick={() => void saveTheme('winter')}>
+        Winter
+      </button>
     </>
   );
 }
@@ -56,36 +59,63 @@ function mount() {
 }
 
 describe('ThemeProvider', () => {
-  it('loads the shared theme and restores all classic hooks on a successful save', async () => {
+  it.each([
+    { theme: 'halloween', mode: 'dark', color: '#18121e' },
+    { theme: 'winter', mode: 'light', color: '#edf6fb' },
+  ])(
+    'loads $theme and restores all classic hooks on a successful save',
+    async ({ theme, mode, color }) => {
+      fetchMock.mockResolvedValueOnce(response(theme));
+      mount();
+      await screen.findByText(theme);
+      expect(document.documentElement.dataset.appTheme).toBe(theme);
+      expect(document.documentElement.dataset.theme).toBe(mode);
+      expect(
+        document
+          .querySelector('meta[name="theme-color"]')
+          ?.getAttribute('content')
+      ).toBe(color);
+
+      fetchMock.mockResolvedValueOnce(response('classic'));
+      fireEvent.click(screen.getByText('Classic'));
+      await waitFor(() =>
+        expect(document.documentElement.dataset.appTheme).toBe('classic')
+      );
+      expect(document.documentElement.dataset.theme).toBe('light');
+      expect(
+        document
+          .querySelector('meta[name="theme-color"]')
+          ?.getAttribute('content')
+      ).toBe('#ffffff');
+      expect(fetchMock).toHaveBeenLastCalledWith(
+        '/api/theme',
+        expect.objectContaining({
+          method: 'PUT',
+          body: JSON.stringify({ theme: 'classic' }),
+        })
+      );
+    }
+  );
+
+  it('clears Halloween dark mode when winter is saved and restores it when switched back', async () => {
     fetchMock.mockResolvedValueOnce(response('halloween'));
     mount();
     await screen.findByText('halloween');
-    expect(document.documentElement.dataset.appTheme).toBe('halloween');
-    expect(document.documentElement.dataset.theme).toBe('dark');
-    expect(
-      document
-        .querySelector('meta[name="theme-color"]')
-        ?.getAttribute('content')
-    ).toBe('#18121e');
 
-    fetchMock.mockResolvedValueOnce(response('classic'));
-    fireEvent.click(screen.getByText('Classic'));
-    await waitFor(() =>
-      expect(document.documentElement.dataset.appTheme).toBe('classic')
-    );
+    fetchMock.mockResolvedValueOnce(response('winter'));
+    fireEvent.click(screen.getByText('Winter'));
+    await screen.findByText('winter');
     expect(document.documentElement.dataset.theme).toBe('light');
     expect(
       document
         .querySelector('meta[name="theme-color"]')
         ?.getAttribute('content')
-    ).toBe('#ffffff');
-    expect(fetchMock).toHaveBeenLastCalledWith(
-      '/api/theme',
-      expect.objectContaining({
-        method: 'PUT',
-        body: JSON.stringify({ theme: 'classic' }),
-      })
-    );
+    ).toBe('#edf6fb');
+
+    fetchMock.mockResolvedValueOnce(response('halloween'));
+    fireEvent.click(screen.getByText('Halloween'));
+    await screen.findByText('halloween');
+    expect(document.documentElement.dataset.theme).toBe('dark');
   });
 
   it('does not apply an unsaved theme and surfaces an expired admin session', async () => {
