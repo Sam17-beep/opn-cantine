@@ -710,6 +710,32 @@ When switching databases (e.g., MongoDB → PostgreSQL):
 
 ### Chakra UI Best Practices
 
+#### Seasonal app themes
+
+- `lib/domain/theme.ts` lists the supported IDs (`classic`, `halloween`, `winter`),
+  labels, color modes, and browser toolbar colors. `getThemeDefinition` is shared
+  by the provider and admin preview; do not hardcode theme metadata in either.
+- `MongoThemeRepository` implements the theme port using the singleton
+  `settings` document `_id: "appearance"`. Missing settings mean `classic`;
+  invalid stored settings are errors, not silent defaults.
+- `/api/theme`: uncached GET for app clients; admin-authenticated PUT for changes.
+- `components/ThemeProvider.tsx` loads and synchronizes the shared choice every
+  minute while visible and on focus. Save responses apply immediately; stale
+  reads cannot overwrite a save. Failed requests preserve the current appearance.
+- **Admin → Thèmes** provides a preview, explicit save, and synchronization errors.
+- Seasonal CSS is scoped by `data-app-theme` on `<html>`, separate from Chakra's
+  `data-theme` color mode (`light` for Classic/Winter, `dark` for Halloween), never
+  inferred from the OS. Keep semantic error/success palettes intact and
+  decorations noninteractive; sale screens must still fit their fixed height.
+- Chakra redeclares color-mode tokens on descendants. Seasonal CSS overrides
+  must cover descendants too; verify computed control colors, not just root tokens.
+- Original seasonal SVGs live in `public/themes/`. A fixed, pointer-inert
+  background layer anchors Halloween's scarecrow, pumpkins, and bats or Winter's
+  snowman, Christmas tree/presents, and snowflakes to screen edges;
+  the admin preview reuses those assets. No remote artwork or animation.
+- To add a theme, extend the domain registry, scoped CSS, and preview
+  presentation. Never add per-page persistence or alter sale behavior.
+
 #### Theme Configuration
 
 ```typescript

@@ -243,6 +243,7 @@ export default function Home() {
         size={{ base: '4xl', md: '6xl' }}
         fontWeight="800"
         letterSpacing="-0.02em"
+        textAlign="center"
       >
         Cantine
       </Heading>

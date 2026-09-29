@@ -21,6 +21,7 @@ const NAV_LINKS = [
   { href: '/admin/restock',        label: 'Stocks' },
   { href: '/admin/announcements',  label: 'Annonces' },
   { href: '/admin/logs',           label: 'Journal' },
+  { href: '/admin/themes',         label: 'Thèmes' },
 ];
 
 const NAV_H = '72px';
@@ -138,6 +139,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
         bg="bg"
         borderTop="1px solid"
         borderColor="border"
+        overflowX="auto"
       >
         {NAV_LINKS.map(({ href, label }) => {
           const isActive = href === '/admin'
@@ -147,6 +149,8 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
             <Flex
               key={href}
               flex={1}
+              minW="100px"
+              flexShrink={0}
               direction="column"
               align="center"
               justify="center"
