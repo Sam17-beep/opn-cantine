@@ -27,6 +27,7 @@ The Bell Canteen platform is a comprehensive stock and sales management system t
 - **Digital purchasing** for employees/customers
 - **Stock management** for administrators
 - **User balance tracking** and transaction history
+- **Year-to-date spending leaderboard** — anonymous, per-user rank only (see README "Spending leaderboard")
 - **Analytics and reporting** for business insights
 
 ### Core Principles

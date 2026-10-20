@@ -24,6 +24,10 @@ interface EmployeeDoc {
 
 interface TransactionDoc {
   _id: string;
+  cardNumber?: string;
+  totalAmount?: number;
+  timestamp?: Date;
+  items?: unknown[];
   inventory?: { productId: string | null; applied: number }[];
 }
 
@@ -91,6 +95,22 @@ export async function seedEmployee(employee: {
   tab?: number;
 }): Promise<void> {
   await (await employees()).insertOne({ tab: 0, ...employee });
+}
+
+let seededTransactions = 0;
+
+/** Records a ledger row directly, for suites that only read the ledger. */
+export async function seedTransaction(transaction: {
+  cardNumber: string;
+  totalAmount: number;
+  timestamp: Date;
+}): Promise<void> {
+  seededTransactions++;
+  await (await transactions()).insertOne({
+    _id: `seed-${seededTransactions}`,
+    items: [],
+    ...transaction,
+  });
 }
 
 export async function readQuantity(productId: string): Promise<number> {

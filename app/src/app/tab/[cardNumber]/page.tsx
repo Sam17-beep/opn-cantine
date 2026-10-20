@@ -18,6 +18,7 @@ import { ScannedItemList } from '@/components/ScannedItemList';
 import { useCart } from './hooks/useCart';
 import { useSaveFlow } from './hooks/useSaveFlow';
 import { HistoryModal } from './components/HistoryModal';
+import { LeaderboardBadge } from './components/LeaderboardBadge';
 import { SaveModal } from './components/SaveModal';
 import { ResetModal } from './components/ResetModal';
 import { EditProductModal } from './components/EditProductModal';
@@ -199,6 +200,7 @@ export default function TabPage({
             >
               {employee.employeeNumber}
             </Heading>
+            <LeaderboardBadge cardNumber={cardNumber} />
           </VStack>
           <Button
             aria-label="Voir historique"
