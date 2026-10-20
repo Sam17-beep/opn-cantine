@@ -1,4 +1,5 @@
 import { Transaction, InventoryLine } from '../entities/transaction.entity';
+import { SpendingTotal } from '../leaderboard';
 
 export interface PaginatedOptions {
   page: number;
@@ -31,4 +32,6 @@ export interface ITransactionRepository {
   findByCardNumber(cardNumber: string): Promise<Transaction[]>;
   findPaginated(options: PaginatedOptions): Promise<PaginatedResult>;
   findDistinctItems(): Promise<string[]>;
+  /** Total spent per card since `since`, ignoring the given cards. */
+  sumSpendingByCard(since: Date, excludeCardNumbers: string[]): Promise<SpendingTotal[]>;
 }

@@ -5,6 +5,7 @@ import {
   PaginatedOptions,
   PaginatedResult,
 } from '@/lib/domain/ports/transaction.repository.port';
+import { SpendingTotal } from '@/lib/domain/leaderboard';
 import { getDb } from '../db/mongo';
 import { ObjectId } from 'mongodb';
 
@@ -112,6 +113,17 @@ export class MongoTransactionRepository implements ITransactionRepository {
     const col = await this.collection();
     const names = await col.distinct('items.name');
     return (names as string[]).filter(Boolean).sort();
+  }
+
+  async sumSpendingByCard(since: Date, excludeCardNumbers: string[]): Promise<SpendingTotal[]> {
+    const col = await this.collection();
+    const rows = await col
+      .aggregate<{ _id: string; total: number }>([
+        { $match: { timestamp: { $gte: since }, cardNumber: { $nin: excludeCardNumbers } } },
+        { $group: { _id: '$cardNumber', total: { $sum: '$totalAmount' } } },
+      ])
+      .toArray();
+    return rows.map((row) => ({ cardNumber: row._id, total: row.total }));
   }
 }
 
