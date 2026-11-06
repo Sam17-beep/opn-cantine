@@ -293,6 +293,10 @@ identifies anyone else.
   for everyone. Rows predating #34 need `pnpm migrate:status` to show
   `oldShape: 0`, or they are ignored.
 
+When the cart total exceeds `gapToNext` the badge shows the projected rank and a
+brief pointer-inert confetti banner plays once (no refetch; honours
+`prefers-reduced-motion`).
+
 Logic lives in `lib/domain/leaderboard.ts` (pure) and
 `LeaderboardApplicationService`.
 

@@ -53,6 +53,22 @@ describe('LeaderboardBadge', () => {
     expect(fetchMock).toHaveBeenCalledWith('/api/employees/A/leaderboard');
   });
 
+  it('celebrates once when the cart passes the next place', async () => {
+    respondWith({
+      standing: standing({ rank: 3, participants: 5, gapToNext: 4 }),
+    });
+    const { rerender } = render(<LeaderboardBadge cardNumber="A" pendingTotal={3} />);
+    await screen.findByText(/#3 sur 5/);
+    expect(screen.queryByTestId('overtake')).toBeNull();
+
+    rerender(
+      <Providers>
+        <LeaderboardBadge cardNumber="A" pendingTotal={4.5} />
+      </Providers>
+    );
+    expect(screen.getByTestId('overtake').textContent).toContain('#2');
+  });
+
   it('renders nothing for an employee without spending', async () => {
     respondWith({ standing: null });
     const { container } = render(<LeaderboardBadge cardNumber="A" />);
