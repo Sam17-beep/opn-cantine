@@ -43,8 +43,8 @@ const money = (amount: number) => `${amount.toFixed(2)}$`;
 
 export function leaderboardLabel(s: LeaderboardStanding): string {
   const position = `Classement ${s.rank}${s.tied ? ' ex aequo' : ''}`;
-  if (s.gapToNext !== null)
-    return `${position} · ${money(s.gapToNext)} derrière la place au-dessus`;
+  if (s.gapsAbove.length > 0)
+    return `${position} · ${money(s.gapsAbove[0])} derrière la place au-dessus`;
   if (s.leadOverNext !== null) return `${position} · ${money(s.leadOverNext)} d'avance`;
   return position;
 }
@@ -58,18 +58,20 @@ export function LeaderboardBadge({
   pendingTotal?: number;
 }) {
   const [standing, setStanding] = useState<LeaderboardStanding | null>(null);
-  const [celebrating, setCelebrating] = useState(false);
-  const wasPassing = useRef(false);
+  // Bumped on every new pass; keys the overlay so the animation replays.
+  const [celebration, setCelebration] = useState(0);
+  const lastPassed = useRef(0);
 
-  const passing = !!standing && standing.gapToNext !== null && pendingTotal > standing.gapToNext;
+  const passed = standing ? standing.gapsAbove.filter((gap) => pendingTotal > gap).length : 0;
   useEffect(() => {
-    const started = passing && !wasPassing.current;
-    wasPassing.current = passing;
-    if (!started) return;
-    setCelebrating(true);
-    const t = setTimeout(() => setCelebrating(false), OVERTAKE_MS);
+    if (passed > lastPassed.current) setCelebration((n) => n + 1);
+    lastPassed.current = passed;
+  }, [passed]);
+  useEffect(() => {
+    if (!celebration) return;
+    const t = setTimeout(() => setCelebration(0), OVERTAKE_MS);
     return () => clearTimeout(t);
-  }, [passing]);
+  }, [celebration]);
 
   useEffect(() => {
     let active = true;
@@ -86,7 +88,9 @@ export function LeaderboardBadge({
 
   if (!standing) return null;
 
-  const shownRank = passing ? Math.max(1, standing.rank - 1) : standing.rank;
+  const passing = passed > 0;
+  const shownRank = standing.rank - passed;
+  const nextGap = standing.gapsAbove[passed];
 
   return (
     <>
@@ -95,15 +99,19 @@ export function LeaderboardBadge({
         fontSize={{ base: 'sm', md: 'md' }}
         fontWeight="600"
         color={passing ? 'green.500' : 'fg.muted'}
-        animation={celebrating ? `${pulse} 0.6s ease-out 2` : undefined}
+        key={`pulse-${celebration}`}
+        animation={celebration ? `${pulse} 0.6s ease-out 2` : undefined}
         css={reduceMotion}
       >
-        {passing
-          ? `🏆 Classement ${shownRank} · place au-dessus dépassée`
-          : `🏆 ${leaderboardLabel(standing)}`}
+        {!passing
+          ? `🏆 ${leaderboardLabel(standing)}`
+          : nextGap !== undefined
+            ? `🏆 Classement ${shownRank} · ${money(nextGap - pendingTotal)} derrière la place au-dessus`
+            : `🏆 Classement ${shownRank}`}
       </Text>
-      {celebrating && (
+      {celebration > 0 && (
         <Box
+          key={`burst-${celebration}`}
           aria-hidden
           data-testid="overtake"
           position="fixed"

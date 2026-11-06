@@ -13,7 +13,7 @@ const standing = (overrides: Partial<LeaderboardStanding>): LeaderboardStanding 
   rank: 1,
   total: 10,
   tied: false,
-  gapToNext: null,
+  gapsAbove: [],
   leadOverNext: null,
   ...overrides,
 });
@@ -34,9 +34,12 @@ afterEach(() => {
 
 describe('LeaderboardBadge', () => {
   it.each([
-    [standing({ rank: 3, gapToNext: 4.5 }), '🏆 Classement 3 · 4.50$ derrière la place au-dessus'],
     [
-      standing({ rank: 2, tied: true, gapToNext: 1 }),
+      standing({ rank: 3, gapsAbove: [4.5, 9] }),
+      '🏆 Classement 3 · 4.50$ derrière la place au-dessus',
+    ],
+    [
+      standing({ rank: 2, tied: true, gapsAbove: [1] }),
       '🏆 Classement 2 ex aequo · 1.00$ derrière la place au-dessus',
     ],
     [standing({ leadOverNext: 12 }), "🏆 Classement 1 · 12.00$ d'avance"],
@@ -49,20 +52,25 @@ describe('LeaderboardBadge', () => {
     expect(fetchMock).toHaveBeenCalledWith('/api/employees/A/leaderboard');
   });
 
-  it('celebrates once when the cart passes the next place', async () => {
-    respondWith({
-      standing: standing({ rank: 3, gapToNext: 4 }),
-    });
+  it('counts every place the cart passes and celebrates each new one', async () => {
+    respondWith({ standing: standing({ rank: 5, gapsAbove: [4, 6, 6, 20] }) });
     const { rerender } = render(<LeaderboardBadge cardNumber="A" pendingTotal={3} />);
-    await screen.findByText(/Classement 3 ·/);
+    await screen.findByText(/Classement 5 ·/);
     expect(screen.queryByTestId('overtake')).toBeNull();
 
-    rerender(
-      <Providers>
-        <LeaderboardBadge cardNumber="A" pendingTotal={4.5} />
-      </Providers>
-    );
-    expect(screen.getByTestId('overtake').textContent).toContain('Classement 3 → 2');
+    const withCart = (pendingTotal: number) =>
+      rerender(
+        <Providers>
+          <LeaderboardBadge cardNumber="A" pendingTotal={pendingTotal} />
+        </Providers>
+      );
+
+    withCart(7);
+    expect(screen.getByTestId('overtake').textContent).toContain('Classement 5 → 2');
+    expect(screen.getByText('🏆 Classement 2 · 13.00$ derrière la place au-dessus')).toBeTruthy();
+
+    withCart(21);
+    expect(screen.getByTestId('overtake').textContent).toContain('Classement 5 → 1');
   });
 
   it('renders nothing for an employee without spending', async () => {

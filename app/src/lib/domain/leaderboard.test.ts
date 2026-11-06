@@ -23,28 +23,32 @@ describe('startOfYearInZone', () => {
 });
 
 describe('computeStanding', () => {
-  it('reports the gap to the next strictly higher total', () => {
+  it('reports the gap to each higher total, closest first', () => {
     const standing = computeStanding(totals({ a: 50, b: 30, c: 20 }), 'c');
     expect(standing).toEqual({
       rank: 3,
       total: 20,
       tied: false,
-      gapToNext: 10,
+      gapsAbove: [10, 30],
       leadOverNext: null,
     });
   });
 
   it('shares a rank on ties and skips the next one (1, 2, 2, 4)', () => {
     const t = totals({ a: 50, b: 30, c: 30, d: 10 });
-    expect(computeStanding(t, 'b')).toMatchObject({ rank: 2, tied: true, gapToNext: 20 });
-    expect(computeStanding(t, 'c')).toMatchObject({ rank: 2, tied: true, gapToNext: 20 });
-    expect(computeStanding(t, 'd')).toMatchObject({ rank: 4, tied: false, gapToNext: 20 });
+    expect(computeStanding(t, 'b')).toMatchObject({ rank: 2, tied: true, gapsAbove: [20] });
+    expect(computeStanding(t, 'c')).toMatchObject({ rank: 2, tied: true, gapsAbove: [20] });
+    expect(computeStanding(t, 'd')).toMatchObject({
+      rank: 4,
+      tied: false,
+      gapsAbove: [20, 20, 40],
+    });
   });
 
   it('gives the leader their lead over the next lower total', () => {
     expect(computeStanding(totals({ a: 50, b: 38.5 }), 'a')).toMatchObject({
       rank: 1,
-      gapToNext: null,
+      gapsAbove: [],
       leadOverNext: 11.5,
     });
   });
@@ -54,6 +58,14 @@ describe('computeStanding', () => {
       rank: 1,
       tied: true,
       leadOverNext: 30,
+    });
+  });
+
+  it('returns at most five gaps so the head count stays hidden', () => {
+    const t = totals({ a: 70, b: 60, c: 50, d: 40, e: 30, f: 20, me: 10 });
+    expect(computeStanding(t, 'me')).toMatchObject({
+      rank: 7,
+      gapsAbove: [10, 20, 30, 40, 50],
     });
   });
 

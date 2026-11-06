@@ -44,7 +44,7 @@ describe('GET /api/employees/:cardNumber/leaderboard', () => {
       rank: 2,
       total: 12.5,
       tied: false,
-      gapToNext: 17.5,
+      gapsAbove: [17.5],
       leadOverNext: null,
     });
     expect(await standingOf('A')).toMatchObject({ rank: 1, leadOverNext: 17.5 });
