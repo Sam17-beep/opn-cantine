@@ -27,7 +27,6 @@ describe('computeStanding', () => {
     const standing = computeStanding(totals({ a: 50, b: 30, c: 20 }), 'c');
     expect(standing).toEqual({
       rank: 3,
-      participants: 3,
       total: 20,
       tied: false,
       gapToNext: 10,
@@ -61,7 +60,6 @@ describe('computeStanding', () => {
   it('has no lead to report when alone', () => {
     expect(computeStanding(totals({ a: 5 }), 'a')).toMatchObject({
       rank: 1,
-      participants: 1,
       leadOverNext: null,
     });
   });
@@ -69,7 +67,7 @@ describe('computeStanding', () => {
   it('does not rank or count zero spending', () => {
     const t = totals({ a: 5, b: 0 });
     expect(computeStanding(t, 'b')).toBeNull();
-    expect(computeStanding(t, 'a')?.participants).toBe(1);
+    expect(computeStanding(t, 'a')?.leadOverNext).toBeNull();
     expect(computeStanding(t, 'missing')).toBeNull();
   });
 

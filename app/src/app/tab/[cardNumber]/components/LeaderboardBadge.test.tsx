@@ -11,7 +11,6 @@ const render = (ui: ReactElement) => renderRaw(<Providers>{ui}</Providers>);
 
 const standing = (overrides: Partial<LeaderboardStanding>): LeaderboardStanding => ({
   rank: 1,
-  participants: 1,
   total: 10,
   tied: false,
   gapToNext: null,
@@ -35,16 +34,13 @@ afterEach(() => {
 
 describe('LeaderboardBadge', () => {
   it.each([
+    [standing({ rank: 3, gapToNext: 4.5 }), '🏆 Classement 3 · 4.50$ derrière la place au-dessus'],
     [
-      standing({ rank: 3, participants: 42, gapToNext: 4.5 }),
-      '🏆 Classement 3 sur 42 · 4.50$ derrière la place au-dessus',
+      standing({ rank: 2, tied: true, gapToNext: 1 }),
+      '🏆 Classement 2 ex aequo · 1.00$ derrière la place au-dessus',
     ],
-    [
-      standing({ rank: 2, participants: 5, tied: true, gapToNext: 1 }),
-      '🏆 Classement 2 ex aequo sur 5 · 1.00$ derrière la place au-dessus',
-    ],
-    [standing({ participants: 42, leadOverNext: 12 }), "🏆 Classement 1 sur 42 · 12.00$ d'avance"],
-    [standing({ participants: 2, tied: true }), '🏆 Classement 1 ex aequo sur 2'],
+    [standing({ leadOverNext: 12 }), "🏆 Classement 1 · 12.00$ d'avance"],
+    [standing({ tied: true }), '🏆 Classement 1 ex aequo'],
     [standing({}), '🏆 Classement 1'],
   ])('shows the standing %#', async (s, label) => {
     respondWith({ standing: s });
@@ -55,10 +51,10 @@ describe('LeaderboardBadge', () => {
 
   it('celebrates once when the cart passes the next place', async () => {
     respondWith({
-      standing: standing({ rank: 3, participants: 5, gapToNext: 4 }),
+      standing: standing({ rank: 3, gapToNext: 4 }),
     });
     const { rerender } = render(<LeaderboardBadge cardNumber="A" pendingTotal={3} />);
-    await screen.findByText(/Classement 3 sur 5/);
+    await screen.findByText(/Classement 3 ·/);
     expect(screen.queryByTestId('overtake')).toBeNull();
 
     rerender(

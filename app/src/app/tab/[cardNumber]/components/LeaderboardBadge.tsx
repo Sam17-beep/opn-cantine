@@ -42,8 +42,7 @@ const reduceMotion = {
 const money = (amount: number) => `${amount.toFixed(2)}$`;
 
 export function leaderboardLabel(s: LeaderboardStanding): string {
-  const rank = `Classement ${s.rank}${s.tied ? ' ex aequo' : ''}`;
-  const position = s.participants > 1 ? `${rank} sur ${s.participants}` : rank;
+  const position = `Classement ${s.rank}${s.tied ? ' ex aequo' : ''}`;
   if (s.gapToNext !== null)
     return `${position} · ${money(s.gapToNext)} derrière la place au-dessus`;
   if (s.leadOverNext !== null) return `${position} · ${money(s.leadOverNext)} d'avance`;
@@ -127,14 +126,11 @@ export function LeaderboardBadge({
             w="max-content"
             maxW="90vw"
             textAlign="center"
-            fontSize="clamp(1.1rem, 4vmin, 2.25rem)"
+            fontSize="clamp(1.5rem, 6vmin, 3.25rem)"
             shadow="lg"
             animation={`${pop} ${OVERTAKE_MS}ms ease-out forwards`}
           >
-            🎉 Place au-dessus dépassée !
-            <Text fontSize="1.5em">
-              Classement {standing.rank} → {shownRank}
-            </Text>
+            Classement {standing.rank} → {shownRank}
           </Box>
           <Box
             position="absolute"

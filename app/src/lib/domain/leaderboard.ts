@@ -9,8 +9,6 @@ export interface SpendingTotal {
 export interface LeaderboardStanding {
   /** Competition rank (1, 2, 2, 4), 1-based. */
   rank: number;
-  /** Everyone ranked, i.e. with spending above zero. */
-  participants: number;
   total: number;
   /** True when someone else has the exact same total. */
   tied: boolean;
@@ -94,7 +92,6 @@ export function computeStanding(
   const rank = higher + 1;
   return {
     rank,
-    participants: ranked.length,
     total: fromCents(mine.cents),
     tied,
     gapToNext: nearestHigher === null ? null : fromCents(nearestHigher - mine.cents),
