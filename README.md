@@ -279,7 +279,7 @@ the cart while the total sitting next to it says otherwise.
 ## Spending leaderboard
 
 The tab screen shows, under the employee number, where that employee ranks on
-spending since Jan 1 (`America/Toronto`) — e.g. `🏆 #3 sur 42 · 4.50$ derrière
+spending since Jan 1 (`America/Toronto`) — e.g. `🏆 Classement 3 sur 42 · 4.50$ derrière
 la place au-dessus`, or the lead over #2 for the leader. There is no list: the
 screen is shared, so `GET /api/employees/:cardNumber/leaderboard` only returns
 the caller's own `{ standing }` (rank, participants, gap/lead) and never

@@ -42,7 +42,7 @@ const reduceMotion = {
 const money = (amount: number) => `${amount.toFixed(2)}$`;
 
 export function leaderboardLabel(s: LeaderboardStanding): string {
-  const rank = `#${s.rank}${s.tied ? ' ex aequo' : ''}`;
+  const rank = `Classement ${s.rank}${s.tied ? ' ex aequo' : ''}`;
   const position = s.participants > 1 ? `${rank} sur ${s.participants}` : rank;
   if (s.gapToNext !== null)
     return `${position} · ${money(s.gapToNext)} derrière la place au-dessus`;
@@ -100,7 +100,7 @@ export function LeaderboardBadge({
         css={reduceMotion}
       >
         {passing
-          ? `🏆 #${shownRank} · place au-dessus dépassée`
+          ? `🏆 Classement ${shownRank} · place au-dessus dépassée`
           : `🏆 ${leaderboardLabel(standing)}`}
       </Text>
       {celebrating && (
@@ -133,7 +133,7 @@ export function LeaderboardBadge({
           >
             🎉 Place au-dessus dépassée !
             <Text fontSize="1.5em">
-              #{standing.rank} → #{shownRank}
+              Classement {standing.rank} → {shownRank}
             </Text>
           </Box>
           <Box
