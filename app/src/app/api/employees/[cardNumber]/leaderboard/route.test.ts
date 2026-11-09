@@ -42,10 +42,9 @@ describe('GET /api/employees/:cardNumber/leaderboard', () => {
   it('ranks year-to-date spending and reports the gap to the next rank', async () => {
     expect(await standingOf('B')).toEqual({
       rank: 2,
-      participants: 3,
       total: 12.5,
       tied: false,
-      gapToNext: 17.5,
+      gapsAbove: [17.5],
       leadOverNext: null,
     });
     expect(await standingOf('A')).toMatchObject({ rank: 1, leadOverNext: 17.5 });
@@ -58,12 +57,12 @@ describe('GET /api/employees/:cardNumber/leaderboard', () => {
 
   it('leaves cash sales out of the ranking', async () => {
     await seedTransaction({ cardNumber: CASH_CARD_NUMBER, totalAmount: 500, timestamp: thisYear() });
-    expect(await standingOf('A')).toMatchObject({ rank: 1, participants: 3 });
+    expect(await standingOf('A')).toMatchObject({ rank: 1 });
   });
 
   it('leaves deleted employees out of the ranking', async () => {
     await (await employees()).deleteOne({ cardNumber: 'A' });
-    expect(await standingOf('B')).toMatchObject({ rank: 1, participants: 2, leadOverNext: 7.5 });
+    expect(await standingOf('B')).toMatchObject({ rank: 1, leadOverNext: 7.5 });
   });
 
   it('has no standing for an employee who spent nothing this year', async () => {

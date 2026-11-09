@@ -9,16 +9,19 @@ export interface SpendingTotal {
 export interface LeaderboardStanding {
   /** Competition rank (1, 2, 2, 4), 1-based. */
   rank: number;
-  /** Everyone ranked, i.e. with spending above zero. */
-  participants: number;
   total: number;
   /** True when someone else has the exact same total. */
   tied: boolean;
-  /** Amount behind the nearest strictly higher total; null when ranked first. */
-  gapToNext: number | null;
+  /**
+   * Amount behind each person strictly above, closest first, capped at
+   * GAPS_ABOVE_LIMIT. Ties repeat. Anonymous, and never reveals the head count.
+   */
+  gapsAbove: number[];
   /** Amount ahead of the nearest strictly lower total; only set when ranked first. */
   leadOverNext: number | null;
 }
+
+export const GAPS_ABOVE_LIMIT = 5;
 
 const toCents = (amount: number) => Math.round(amount * 100);
 const fromCents = (cents: number) => cents / 100;
@@ -74,16 +77,14 @@ export function computeStanding(
   const mine = ranked.find((t) => t.cardNumber === cardNumber);
   if (!mine) return null;
 
-  let higher = 0;
-  let nearestHigher: number | null = null;
+  const higher: number[] = [];
   let nearestLower: number | null = null;
   let tied = false;
 
   for (const other of ranked) {
     if (other.cardNumber === cardNumber) continue;
     if (other.cents > mine.cents) {
-      higher++;
-      if (nearestHigher === null || other.cents < nearestHigher) nearestHigher = other.cents;
+      higher.push(other.cents - mine.cents);
     } else if (other.cents < mine.cents) {
       if (nearestLower === null || other.cents > nearestLower) nearestLower = other.cents;
     } else {
@@ -91,14 +92,15 @@ export function computeStanding(
     }
   }
 
-  const rank = higher + 1;
+  const rank = higher.length + 1;
   return {
     rank,
-    participants: ranked.length,
     total: fromCents(mine.cents),
     tied,
-    gapToNext: nearestHigher === null ? null : fromCents(nearestHigher - mine.cents),
-    leadOverNext:
-      rank === 1 && nearestLower !== null ? fromCents(mine.cents - nearestLower) : null,
+    gapsAbove: higher
+      .sort((x, y) => x - y)
+      .slice(0, GAPS_ABOVE_LIMIT)
+      .map(fromCents),
+    leadOverNext: rank === 1 && nearestLower !== null ? fromCents(mine.cents - nearestLower) : null,
   };
 }

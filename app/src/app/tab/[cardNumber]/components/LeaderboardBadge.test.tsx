@@ -11,10 +11,9 @@ const render = (ui: ReactElement) => renderRaw(<Providers>{ui}</Providers>);
 
 const standing = (overrides: Partial<LeaderboardStanding>): LeaderboardStanding => ({
   rank: 1,
-  participants: 1,
   total: 10,
   tied: false,
-  gapToNext: null,
+  gapsAbove: [],
   leadOverNext: null,
   ...overrides,
 });
@@ -36,21 +35,42 @@ afterEach(() => {
 describe('LeaderboardBadge', () => {
   it.each([
     [
-      standing({ rank: 3, participants: 42, gapToNext: 4.5 }),
-      '🏆 #3 sur 42 · 4.50$ derrière la place au-dessus',
+      standing({ rank: 3, gapsAbove: [4.5, 9] }),
+      '🏆 Classement 3 · 4.50$ derrière la place au-dessus',
     ],
     [
-      standing({ rank: 2, participants: 5, tied: true, gapToNext: 1 }),
-      '🏆 #2 ex aequo sur 5 · 1.00$ derrière la place au-dessus',
+      standing({ rank: 2, tied: true, gapsAbove: [1] }),
+      '🏆 Classement 2 ex aequo · 1.00$ derrière la place au-dessus',
     ],
-    [standing({ participants: 42, leadOverNext: 12 }), "🏆 #1 sur 42 · 12.00$ d'avance"],
-    [standing({ participants: 2, tied: true }), '🏆 #1 ex aequo sur 2'],
-    [standing({}), '🏆 #1'],
+    [standing({ leadOverNext: 12 }), "🏆 Classement 1 · 12.00$ d'avance"],
+    [standing({ tied: true }), '🏆 Classement 1 ex aequo'],
+    [standing({}), '🏆 Classement 1'],
   ])('shows the standing %#', async (s, label) => {
     respondWith({ standing: s });
     render(<LeaderboardBadge cardNumber="A" />);
     expect(await screen.findByText(label)).toBeTruthy();
     expect(fetchMock).toHaveBeenCalledWith('/api/employees/A/leaderboard');
+  });
+
+  it('counts every place the cart passes and celebrates each new one', async () => {
+    respondWith({ standing: standing({ rank: 5, gapsAbove: [4, 6, 6, 20] }) });
+    const { rerender } = render(<LeaderboardBadge cardNumber="A" pendingTotal={3} />);
+    await screen.findByText(/Classement 5 ·/);
+    expect(screen.queryByTestId('overtake')).toBeNull();
+
+    const withCart = (pendingTotal: number) =>
+      rerender(
+        <Providers>
+          <LeaderboardBadge cardNumber="A" pendingTotal={pendingTotal} />
+        </Providers>
+      );
+
+    withCart(7);
+    expect(screen.getByTestId('overtake').textContent).toContain('Classement 5 → 2');
+    expect(screen.getByText('🏆 Classement 2 · 13.00$ derrière la place au-dessus')).toBeTruthy();
+
+    withCart(21);
+    expect(screen.getByTestId('overtake').textContent).toContain('Classement 5 → 1');
   });
 
   it('renders nothing for an employee without spending', async () => {

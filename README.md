@@ -279,11 +279,12 @@ the cart while the total sitting next to it says otherwise.
 ## Spending leaderboard
 
 The tab screen shows, under the employee number, where that employee ranks on
-spending since Jan 1 (`America/Toronto`) — e.g. `🏆 #3 sur 42 · 4.50$ derrière
-la place au-dessus`, or the lead over #2 for the leader. There is no list: the
+spending since Jan 1 (`America/Toronto`) — e.g. `🏆 Classement 3 · 4.50$ derrière la
+place au-dessus`, or the lead over #2 for the leader. There is no list: the
 screen is shared, so `GET /api/employees/:cardNumber/leaderboard` only returns
-the caller's own `{ standing }` (rank, participants, gap/lead) and never
-identifies anyone else.
+the caller's own `{ standing }` (rank, lead, and `gapsAbove`: the amounts behind
+the next 5 people above, closest first) and never identifies anyone else nor
+how many are ranked.
 
 - Ranks are shared on ties (1, 2, 2, 4) and compared in cents.
 - Cash sales, cards no longer registered (deleted employees) and anyone at $0
@@ -292,6 +293,11 @@ identifies anyone else.
   May 2026 and was not exactly-once before #47 — so 2026 under-counts, equally
   for everyone. Rows predating #34 need `pnpm migrate:status` to show
   `oldShape: 0`, or they are ignored.
+
+Each gap in `gapsAbove` the cart total exceeds counts as one place passed: the
+badge shows the projected rank (e.g. `Classement 5 → 2`) and a brief
+pointer-inert confetti banner plays for every new pass (no refetch; honours
+`prefers-reduced-motion`). Passing more than 5 people only shows 5 places up.
 
 Logic lives in `lib/domain/leaderboard.ts` (pure) and
 `LeaderboardApplicationService`.

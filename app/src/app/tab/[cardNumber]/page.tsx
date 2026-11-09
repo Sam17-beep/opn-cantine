@@ -200,7 +200,7 @@ export default function TabPage({
             >
               {employee.employeeNumber}
             </Heading>
-            <LeaderboardBadge cardNumber={cardNumber} />
+            <LeaderboardBadge cardNumber={cardNumber} pendingTotal={cart.pendingTotal} />
           </VStack>
           <Button
             aria-label="Voir historique"
