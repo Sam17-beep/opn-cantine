@@ -16,10 +16,6 @@ const burst = keyframes`
   0% { opacity: 1; transform: translate(0, 0) rotate(0); }
   100% { opacity: 0; transform: translate(var(--dx), var(--dy)) rotate(var(--rot)); }
 `;
-const pulse = keyframes`
-  0%, 100% { transform: scale(1); }
-  40% { transform: scale(1.12); }
-`;
 
 const OVERTAKE_MS = 2200;
 const COLORS = ['#f6c343', '#ef476f', '#06d6a0', '#118ab2', '#ff9f1c', '#9b5de5'];
@@ -34,10 +30,6 @@ const CONFETTI = Array.from({ length: 24 }, (_, i) => {
     color: COLORS[i % COLORS.length],
   };
 });
-
-const reduceMotion = {
-  '@media (prefers-reduced-motion: reduce)': { animation: 'none' },
-};
 
 const money = (amount: number) => `${amount.toFixed(2)}$`;
 
@@ -99,9 +91,6 @@ export function LeaderboardBadge({
         fontSize={{ base: 'sm', md: 'md' }}
         fontWeight="600"
         color={passing ? 'green.500' : 'fg.muted'}
-        key={`pulse-${celebration}`}
-        animation={celebration ? `${pulse} 0.6s ease-out 2` : undefined}
-        css={reduceMotion}
       >
         {!passing
           ? `🏆 ${leaderboardLabel(standing)}`
