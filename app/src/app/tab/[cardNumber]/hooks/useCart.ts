@@ -3,6 +3,15 @@ import type { ScannedProduct } from '../types';
 import { addUnit } from '../cart-lines';
 import { logAction } from '@/lib/client/action-log.client';
 import { useBarcodeScanner } from '@/lib/client/useBarcodeScanner';
+import { EVENT_BARCODE } from '@/lib/domain/ticket-options';
+
+export interface TicketLine {
+  optionId: string;
+  /** Name billed on the cart line (see `ticketLineName`). */
+  name: string;
+  price: number;
+  qty: number;
+}
 
 /**
  * A lookup must not be allowed to hang forever. The auto-logout is paused while
@@ -145,14 +154,28 @@ export function useCart(
     );
   };
 
-  const addEvent = (name: string, price: number) => {
+  /** Adds event tickets, possibly several options at once from the picker. */
+  const addTickets = (eventId: string, tickets: TicketLine[]) => {
     const now = Date.now();
     if (now - lastAddRef.current < 300) return;
     lastAddRef.current = now;
 
-    logAction('quick_add', { barcode: '_event_', name, price });
-    setPendingTotal((prev) => prev + price);
-    setScannedProducts((prev) => addUnit(prev, { barcode: '_event_', name, price }));
+    const wanted = tickets.filter((t) => t.qty > 0);
+    if (wanted.length === 0) return;
+
+    for (const t of wanted) {
+      logAction('quick_add', { barcode: EVENT_BARCODE, name: t.name, price: t.price, qty: t.qty, eventId, optionId: t.optionId });
+    }
+    setPendingTotal((prev) => wanted.reduce((sum, t) => sum + t.price * t.qty, prev));
+    setScannedProducts((prev) =>
+      wanted.reduce((lines, t) => {
+        let next = lines;
+        for (let i = 0; i < t.qty; i++) {
+          next = addUnit(next, { barcode: EVENT_BARCODE, name: t.name, price: t.price, eventId, optionId: t.optionId });
+        }
+        return next;
+      }, prev)
+    );
   };
 
   return {
@@ -165,7 +188,7 @@ export function useCart(
     scanValue,
     scanInputRef,
     addCoffee,
-    addEvent,
+    addTickets,
     handleScanChange,
     handleScanKeyDown,
   };

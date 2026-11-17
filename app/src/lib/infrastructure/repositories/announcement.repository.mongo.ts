@@ -1,13 +1,14 @@
 import { ObjectId } from 'mongodb';
 import { Announcement } from '@/lib/domain/entities/announcement.entity';
 import { IAnnouncementRepository } from '@/lib/domain/ports/announcement.repository.port';
+import { normalizeAnnouncement } from '@/lib/domain/ticket-options';
 import { getDb } from '../db/mongo';
 
-type DocShape = Omit<Announcement, 'id'> & { _id: ObjectId };
+type DocShape = Omit<Announcement, 'id' | 'options'> & { _id: ObjectId; options?: Announcement['options'] | null };
 
 function toEntity(doc: DocShape): Announcement {
   const { _id, ...rest } = doc;
-  return { ...rest, id: _id.toHexString() };
+  return normalizeAnnouncement({ ...rest, id: _id.toHexString() });
 }
 
 function utcDateString(): string {
@@ -58,7 +59,11 @@ export class MongoAnnouncementRepository implements IAnnouncementRepository {
     const col = await this.collection();
     const result = await col.findOneAndUpdate(
       { _id: new ObjectId(id) } as never,
-      { $set: { ...data, updatedAt: new Date() } },
+      {
+        $set: { ...data, updatedAt: new Date() },
+        // Once options are written the legacy single product is redundant.
+        ...(data.options !== undefined && { $unset: { product: '' } }),
+      },
       { returnDocument: 'after' }
     );
     return result ? toEntity(result as unknown as DocShape) : null;

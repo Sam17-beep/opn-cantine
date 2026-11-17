@@ -22,7 +22,7 @@ function parseItems(raw: unknown): TransactionItem[] | null {
   const items: TransactionItem[] = [];
   for (const entry of raw) {
     if (typeof entry !== 'object' || entry === null) return null;
-    const { barcode, name, price, quantity, productId } = entry as Record<string, unknown>;
+    const { barcode, name, price, quantity, productId, eventId, optionId } = entry as Record<string, unknown>;
 
     if (typeof barcode !== 'string' || barcode.trim().length === 0) return null;
     if (typeof name !== 'string') return null;
@@ -35,6 +35,8 @@ function parseItems(raw: unknown): TransactionItem[] | null {
       price,
       quantity,
       productId: typeof productId === 'string' ? productId : null,
+      ...(typeof eventId === 'string' && eventId && { eventId }),
+      ...(typeof optionId === 'string' && optionId && { optionId }),
     });
   }
   return items;

@@ -9,6 +9,7 @@ import {
   readQuantity,
   readTab,
   countTransactions,
+  transactions,
 } from '@/test/db';
 import { POST } from './route';
 import { CASH_CARD_NUMBER } from '@/lib/domain/constants';
@@ -111,6 +112,23 @@ describe('POST /api/sales total validation', () => {
 
     expect(status).toBe(200);
     expect(await readTab(CARD)).toBe(25);
+  });
+
+  it('records which event and ticket option each line sold', async () => {
+    const { status } = await postSale({
+      saleId: 'sale-0007',
+      cardNumber: CARD,
+      items: [
+        { barcode: '_event_', name: 'Gala – Adulte', price: 25, quantity: 1, productId: null, eventId: 'e1', optionId: 'adult' },
+      ],
+      totalAmount: 25,
+    });
+
+    expect(status).toBe(200);
+    const saved = await (await transactions()).findOne({ _id: 'sale-0007' });
+    expect(saved?.items).toEqual([
+      expect.objectContaining({ eventId: 'e1', optionId: 'adult', name: 'Gala – Adulte' }),
+    ]);
   });
 
   it('rejects the folded-event payload the old cart produced', async () => {

@@ -28,6 +28,7 @@ interface Params {
   unknownOpen: boolean;
   editProduct: ScannedProduct | null;
   historyOpen: boolean;
+  ticketPickerOpen?: boolean;
   /** True while a barcode lookup is in flight. */
   scanPending: boolean;
 }
@@ -43,6 +44,7 @@ export function useSaveFlow({
   unknownOpen,
   editProduct,
   historyOpen,
+  ticketPickerOpen = false,
   scanPending,
 }: Params) {
   const [saveOpen, setSaveOpen] = useState(false);
@@ -93,6 +95,7 @@ export function useSaveFlow({
           price: p.price,
           quantity: p.qty,
           productId: p.productId ?? null,
+          ...(p.eventId && { eventId: p.eventId, optionId: p.optionId ?? null }),
         })),
       });
 
@@ -235,7 +238,7 @@ export function useSaveFlow({
   useEffect(() => {
     if (inactivityTimerRef.current) clearTimeout(inactivityTimerRef.current);
 
-    if (saveOpen || resetOpen || unknownOpen || editProduct || historyOpen) return;
+    if (saveOpen || resetOpen || unknownOpen || editProduct || historyOpen || ticketPickerOpen) return;
     if (scanPending) return;
 
     inactivityTimerRef.current = setTimeout(() => {
@@ -259,6 +262,7 @@ export function useSaveFlow({
     unknownOpen,
     editProduct,
     historyOpen,
+    ticketPickerOpen,
     scanPending,
   ]);
 

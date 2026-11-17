@@ -5,6 +5,9 @@ export interface TransactionItem {
   quantity: number;
   /** Resolved at scan time so a later barcode edit cannot orphan the line. */
   productId?: string | null;
+  /** Event ticket lines (`_event_`): which event and ticket option was sold. */
+  eventId?: string | null;
+  optionId?: string | null;
 }
 
 export type InventoryLineStatus =

@@ -43,6 +43,15 @@ describe('addUnit', () => {
     expect(lines[0].qty).toBe(2);
   });
 
+  it('keeps two ticket options apart even with the same name and price', () => {
+    const lines = build(
+      { ...scan('_event_', 'Billet', 25), eventId: 'e1', optionId: 'adult' },
+      { ...scan('_event_', 'Billet', 25), eventId: 'e1', optionId: 'vege' }
+    );
+
+    expect(lines.map((l) => l.optionId)).toEqual(['adult', 'vege']);
+  });
+
   it('merges repeated coffees onto one line', () => {
     const lines = build(scan('_cafe_', 'Café', 1), scan('_cafe_', 'Café', 1));
 
