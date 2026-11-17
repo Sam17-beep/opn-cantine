@@ -415,7 +415,7 @@ export default function TabPage({
                 >
                   {ticketEvent.options.length > 1 ? (
                     <VStack gap={0}>
-                      <Text>🎟️ {ticketEvent.title}</Text>
+                      <Text>{ticketEvent.title}</Text>
                       <Text fontSize="sm" fontWeight="500" opacity={0.8}>
                         {ticketEvent.options.length} options · dès{' '}
                         {Math.min(...ticketEvent.options.map((o) => o.price)).toFixed(2)}$
