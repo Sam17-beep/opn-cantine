@@ -23,26 +23,42 @@ import { SaveModal } from './components/SaveModal';
 import { ResetModal } from './components/ResetModal';
 import { EditProductModal } from './components/EditProductModal';
 import { UnknownProductModal } from './components/UnknownProductModal';
+import { TicketPickerModal } from './components/TicketPickerModal';
 import type { Employee, ScannedProduct } from './types';
 import { logAction, logActionOnce } from '@/lib/client/action-log.client';
+import type { TicketOption } from '@/lib/domain/entities/announcement.entity';
+import { remainingAllowance, ticketLineName } from '@/lib/domain/ticket-options';
 
-type AnnouncementProduct = { name: string; price: number };
-type AnnouncementEvent = {
-  product?: AnnouncementProduct | null;
+type TicketEvent = {
+  id: string;
+  title: string;
+  options: TicketOption[];
+  maxPerEmployee?: number | null;
+};
+type AnnouncementEvent = TicketEvent & {
   salesStart?: string | null;
   salesEnd?: string | null;
-  purchasedQty?: number;
+  purchased?: { total: number; byOption: Record<string, number> };
 };
+
+const NO_PURCHASES = { total: 0, byOption: {} as Record<string, number> };
 
 function localDateString(): string {
   const d = new Date();
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
 }
 
-function isProductVisible(event: AnnouncementEvent): boolean {
+function isOnSale(event: AnnouncementEvent): boolean {
   const today = localDateString();
-  return !!event.product && !!event.salesStart && today >= event.salesStart &&
+  return event.options?.length > 0 && !!event.salesStart && today >= event.salesStart &&
     (!event.salesEnd || today <= event.salesEnd);
+}
+
+function ticketHint(purchased: number, max: number | null | undefined, left: number): string | null {
+  const parts: string[] = [];
+  if (purchased > 0) parts.push(`Vous avez déjà acheté ${purchased} billet${purchased > 1 ? 's' : ''}`);
+  if (max != null) parts.push(left === 0 ? `Limite de ${max} atteinte` : `Max ${max} par personne`);
+  return parts.length > 0 ? parts.join(' · ') : null;
 }
 
 function getBalanceColor(value: number) {
@@ -78,8 +94,9 @@ export default function TabPage({
   const router = useRouter();
 
   const [employee, setEmployee] = useState<Employee | null>(null);
-  const [announcementProduct, setAnnouncementProduct] = useState<AnnouncementProduct | null>(null);
-  const [purchasedQty, setPurchasedQty] = useState(0);
+  const [ticketEvent, setTicketEvent] = useState<TicketEvent | null>(null);
+  const [purchased, setPurchased] = useState(NO_PURCHASES);
+  const [ticketPickerOpen, setTicketPickerOpen] = useState(false);
   const [loading, setLoading] = useState(false);
   const [resetOpen, setResetOpen] = useState(false);
   const [unknownOpen, setUnknownOpen] = useState(false);
@@ -107,11 +124,12 @@ export default function TabPage({
     unknownOpen,
     editProduct,
     historyOpen,
+    ticketPickerOpen,
     scanPending: cart.scanPending,
   });
 
   const modalOpen =
-    save.saveOpen || resetOpen || unknownOpen || editProduct !== null || historyOpen;
+    save.saveOpen || resetOpen || unknownOpen || editProduct !== null || historyOpen || ticketPickerOpen;
   modalOpenRef.current = modalOpen;
   savingRef.current = save.saving;
 
@@ -138,9 +156,14 @@ export default function TabPage({
     fetch(`/api/announcement?cardNumber=${encodeURIComponent(cardNumber)}`)
       .then((res) => res.ok ? res.json() : null)
       .then((data: AnnouncementEvent | null) => {
-        if (data && isProductVisible(data) && data.product) {
-          setAnnouncementProduct(data.product);
-          setPurchasedQty(data.purchasedQty ?? 0);
+        if (data && isOnSale(data)) {
+          setTicketEvent({
+            id: data.id,
+            title: data.title,
+            options: data.options,
+            maxPerEmployee: data.maxPerEmployee ?? null,
+          });
+          setPurchased(data.purchased ?? NO_PURCHASES);
         }
       })
       .catch(() => null);
@@ -172,6 +195,25 @@ export default function TabPage({
     document.addEventListener('click', refocus);
     return () => document.removeEventListener('click', refocus);
   }, [modalOpen, cart.scanInputRef]);
+
+  const ticketsInCart = ticketEvent
+    ? cart.scannedProducts.reduce((sum, p) => sum + (p.eventId === ticketEvent.id ? p.qty : 0), 0)
+    : 0;
+  const ticketsLeft = remainingAllowance(ticketEvent?.maxPerEmployee, purchased.total, ticketsInCart);
+  const ticketsHint = ticketEvent ? ticketHint(purchased.total, ticketEvent.maxPerEmployee, ticketsLeft) : null;
+
+  const addTickets = (quantities: Record<string, number>) => {
+    if (!ticketEvent) return;
+    cart.addTickets(
+      ticketEvent.id,
+      ticketEvent.options.map((option) => ({
+        optionId: option.id,
+        name: ticketLineName(ticketEvent.title, option, ticketEvent.options.length),
+        price: option.price,
+        qty: quantities[option.id] ?? 0,
+      }))
+    );
+  };
 
   const hasPending = cart.pendingTotal !== 0;
   const projectedTab = employee ? employee.tab + cart.pendingTotal : 0;
@@ -352,26 +394,40 @@ export default function TabPage({
             >
               Café (+1.00$)
             </Button>
-            {announcementProduct && (
+            {ticketEvent && (
               <VStack flex={1} gap={1} align="stretch">
                 <Button
                   h="auto"
-                  py={4}
+                  py={ticketEvent.options.length > 1 ? 2 : 4}
                   variant="outline"
                   borderColor="#0068A2"
                   color="#0068A2"
                   _hover={{ bg: '#0068A210' }}
                   _dark={{ color: 'blue.300', borderColor: 'blue.300', _hover: { bg: 'blue.subtle' } }}
-                  onClick={() => cart.addEvent(announcementProduct.name, announcementProduct.price)}
-                  disabled={loading}
+                  onClick={() =>
+                    ticketEvent.options.length > 1
+                      ? setTicketPickerOpen(true)
+                      : addTickets({ [ticketEvent.options[0].id]: 1 })
+                  }
+                  disabled={loading || ticketsLeft === 0}
                   fontWeight="600"
                   fontSize={{ base: 'lg', md: 'xl' }}
                 >
-                  {announcementProduct.name} (+{announcementProduct.price.toFixed(2)}$)
+                  {ticketEvent.options.length > 1 ? (
+                    <VStack gap={0}>
+                      <Text>🎟️ {ticketEvent.title}</Text>
+                      <Text fontSize="sm" fontWeight="500" opacity={0.8}>
+                        {ticketEvent.options.length} options · dès{' '}
+                        {Math.min(...ticketEvent.options.map((o) => o.price)).toFixed(2)}$
+                      </Text>
+                    </VStack>
+                  ) : (
+                    `${ticketEvent.options[0].name} (+${ticketEvent.options[0].price.toFixed(2)}$)`
+                  )}
                 </Button>
-                {purchasedQty > 0 && (
+                {ticketsHint && (
                   <Text fontSize="sm" color="fg.muted" textAlign="center">
-                    Vous avez déjà acheté {purchasedQty} billet{purchasedQty > 1 ? 's' : ''}
+                    {ticketsHint}
                   </Text>
                 )}
               </VStack>
@@ -439,6 +495,11 @@ export default function TabPage({
       <EditProductModal
         product={editProduct}
         qty={editQty}
+        maxQty={
+          editProduct && ticketEvent && editProduct.eventId === ticketEvent.id
+            ? editProduct.qty + ticketsLeft
+            : undefined
+        }
         onQtyChange={setEditQty}
         onOpenChange={(open) => { if (!open) setEditProduct(null); }}
         onDelete={() => {
@@ -472,6 +533,20 @@ export default function TabPage({
           setEditProduct(null);
         }}
       />
+
+      {ticketEvent && (
+        <TicketPickerModal
+          open={ticketPickerOpen}
+          event={ticketEvent}
+          purchased={purchased}
+          inCart={ticketsInCart}
+          onClose={() => setTicketPickerOpen(false)}
+          onConfirm={(quantities) => {
+            addTickets(quantities);
+            setTicketPickerOpen(false);
+          }}
+        />
+      )}
 
       <HistoryModal
         open={historyOpen}

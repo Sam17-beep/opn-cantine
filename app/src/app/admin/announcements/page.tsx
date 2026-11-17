@@ -26,11 +26,9 @@ import {
   DialogBackdrop,
   DialogTitle,
 } from '@chakra-ui/react';
-
-interface AnnouncementProduct {
-  name: string;
-  price: number;
-}
+import type { TicketOption } from '@/lib/domain/entities/announcement.entity';
+import { validateTicketSale, type EventTicketStats, type TicketSaleErrors } from '@/lib/domain/ticket-options';
+import { TicketOptionsEditor, emptyDraftOption, type DraftOption } from './TicketOptionsEditor';
 
 interface AnnouncementEvent {
   id: string;
@@ -40,11 +38,12 @@ interface AnnouncementEvent {
   bannerEnd?: string | null;
   salesStart?: string | null;
   salesEnd?: string | null;
-  product?: AnnouncementProduct | null;
+  options: TicketOption[];
+  maxPerEmployee?: number | null;
 }
 
 interface Stats {
-  byName: Record<string, { qty: number; revenue: number }>;
+  byEvent: Record<string, EventTicketStats>;
   total: { qty: number; revenue: number };
 }
 
@@ -52,6 +51,7 @@ interface Buyer {
   employeeNumber: string;
   qty: number;
   revenue: number;
+  byOption: Record<string, number>;
 }
 
 type EventStatus = 'current' | 'future' | 'past' | 'draft';
@@ -255,10 +255,26 @@ const EMPTY_FORM = {
   bannerEnd: '',
   salesStart: '',
   salesEnd: '',
-  hasProduct: false,
-  productName: '',
-  productPrice: '',
+  hasTickets: false,
+  options: [] as DraftOption[],
+  maxPerEmployee: '',
 };
+
+type FormState = typeof EMPTY_FORM;
+
+function ticketPayload(form: FormState) {
+  if (!form.hasTickets) return { options: [], maxPerEmployee: null };
+  return {
+    options: form.options.map((o) => ({ id: o.id, name: o.name, price: o.price, description: o.description })),
+    maxPerEmployee: form.maxPerEmployee.trim() || null,
+  };
+}
+
+/** Same rules the API applies, so the form can flag problems before saving. */
+function ticketErrors(form: FormState): TicketSaleErrors | null {
+  const result = validateTicketSale(ticketPayload(form), () => 'new');
+  return result.ok ? null : result.errors;
+}
 
 export default function AnnouncementsPage() {
   const [events, setEvents] = useState<AnnouncementEvent[]>([]);
@@ -269,7 +285,9 @@ export default function AnnouncementsPage() {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const [overlapError, setOverlapError] = useState(false);
-  const [form, setForm] = useState(EMPTY_FORM);
+  const [form, setForm] = useState<FormState>(EMPTY_FORM);
+  const [showTicketErrors, setShowTicketErrors] = useState(false);
+  const [removedWithSales, setRemovedWithSales] = useState<{ name: string; sold: number }[]>([]);
   const [deleteTarget, setDeleteTarget] = useState<AnnouncementEvent | null>(null);
   const [buyersTarget, setBuyersTarget] = useState<AnnouncementEvent | null>(null);
   const [buyers, setBuyers] = useState<Buyer[] | null>(null);
@@ -291,12 +309,16 @@ export default function AnnouncementsPage() {
     setEditingId(null);
     setForm(EMPTY_FORM);
     setOverlapError(false);
+    setShowTicketErrors(false);
+    setRemovedWithSales([]);
     setModalOpen(true);
   };
 
   const openEdit = (event: AnnouncementEvent) => {
     setEditingId(event.id);
     setOverlapError(false);
+    setShowTicketErrors(false);
+    setRemovedWithSales([]);
     setForm({
       title: event.title,
       description: event.description,
@@ -304,15 +326,28 @@ export default function AnnouncementsPage() {
       bannerEnd: event.bannerEnd ?? '',
       salesStart: event.salesStart ?? '',
       salesEnd: event.salesEnd ?? '',
-      hasProduct: !!event.product,
-      productName: event.product?.name ?? '',
-      productPrice: event.product ? String(event.product.price) : '',
+      hasTickets: event.options.length > 0,
+      options: event.options.map((o) => ({
+        key: o.id,
+        id: o.id,
+        name: o.name,
+        price: String(o.price),
+        description: o.description ?? '',
+      })),
+      maxPerEmployee: event.maxPerEmployee != null ? String(event.maxPerEmployee) : '',
     });
     setModalOpen(true);
   };
 
   const handleSave = async () => {
     if (!form.title.trim() || !form.description.trim()) return;
+
+    const tickets = ticketPayload(form);
+    if (ticketErrors(form)) {
+      setShowTicketErrors(true);
+      return;
+    }
+
     setSaving(true);
     setOverlapError(false);
 
@@ -323,9 +358,7 @@ export default function AnnouncementsPage() {
       bannerEnd: form.bannerEnd || null,
       salesStart: form.salesStart || null,
       salesEnd: form.salesEnd || null,
-      product: form.hasProduct && form.productName.trim() && form.productPrice
-        ? { name: form.productName.trim(), price: parseFloat(form.productPrice) }
-        : null,
+      ...tickets,
     };
 
     const url = editingId ? `/api/announcements/${editingId}` : '/api/announcements';
@@ -336,6 +369,10 @@ export default function AnnouncementsPage() {
 
     if (res.status === 409) {
       setOverlapError(true);
+      return;
+    }
+    if (res.status === 400) {
+      setShowTicketErrors(true);
       return;
     }
 
@@ -351,11 +388,11 @@ export default function AnnouncementsPage() {
   };
 
   const openBuyers = async (event: AnnouncementEvent) => {
-    if (!event.product) return;
+    if (event.options.length === 0) return;
     setBuyersTarget(event);
     setBuyers(null);
     setBuyersLoading(true);
-    const res = await fetch(`/api/announcement/buyers?name=${encodeURIComponent(event.product.name)}`);
+    const res = await fetch(`/api/announcement/buyers?eventId=${encodeURIComponent(event.id)}`);
     if (res.ok) {
       const data = await res.json();
       setBuyers(data.buyers);
@@ -363,8 +400,33 @@ export default function AnnouncementsPage() {
     setBuyersLoading(false);
   };
 
-  const setField = (field: keyof typeof EMPTY_FORM, value: string | boolean) =>
+  const setField = (field: keyof FormState, value: string | boolean) =>
     setForm((f) => ({ ...f, [field]: value }));
+
+  const setHasTickets = (on: boolean) =>
+    setForm((f) => ({
+      ...f,
+      hasTickets: on,
+      options: on && f.options.length === 0 ? [emptyDraftOption()] : f.options,
+    }));
+
+  const shownTicketErrors = showTicketErrors ? ticketErrors(form) : null;
+
+  const editingSold = editingId ? stats?.byEvent[editingId] : undefined;
+  const soldByOption = Object.fromEntries(
+    Object.entries(editingSold?.byOption ?? {}).map(([id, s]) => [id, s.qty])
+  );
+
+  const buyersStats = buyersTarget ? stats?.byEvent[buyersTarget.id] : undefined;
+  const optionName = (optionId: string) =>
+    buyersTarget?.options.find((o) => o.id === optionId)?.name ?? buyersStats?.byOption[optionId]?.name ?? optionId;
+  // Event's option order first; removed options (unknown ids) last.
+  const optionRank = (optionId: string) => {
+    const index = buyersTarget?.options.findIndex((o) => o.id === optionId) ?? -1;
+    return index === -1 ? Number.MAX_SAFE_INTEGER : index;
+  };
+  const byOptionOrder = <T,>(record: Record<string, T>) =>
+    Object.entries(record).sort(([a], [b]) => optionRank(a) - optionRank(b));
 
   return (
     <Flex direction="column" px={8} py={6} pb={8}>
@@ -398,7 +460,8 @@ export default function AnnouncementsPage() {
           {events.map((event, i) => {
             const status = getStatus(event);
             const cfg = STATUS_CONFIG[status];
-            const productStats = event.product ? stats?.byName[event.product.name] : null;
+            const sells = event.options.length > 0;
+            const productStats = sells ? stats?.byEvent[event.id] : null;
             return (
               <Box key={event.id}>
                 {i > 0 && <Separator />}
@@ -415,7 +478,12 @@ export default function AnnouncementsPage() {
                   <Box flex={3} minW={0}>
                     <Text fontWeight="700" fontSize="md" truncate>{event.title}</Text>
                     <Text fontSize="sm" color="fg.muted" truncate>{event.description}</Text>
-                    <Text fontSize="xs" fontWeight="600" color={cfg.textColor} _dark={{ color: status === 'current' ? 'green.300' : status === 'future' ? 'blue.300' : 'fg.muted' }} mt="2px">{cfg.label}</Text>
+                    <HStack gap={2} mt="2px">
+                      <Text fontSize="xs" fontWeight="600" color={cfg.textColor} _dark={{ color: status === 'current' ? 'green.300' : status === 'future' ? 'blue.300' : 'fg.muted' }}>{cfg.label}</Text>
+                      {event.options.length > 1 && (
+                        <Text fontSize="xs" color="fg.muted">· {event.options.length} options</Text>
+                      )}
+                    </HStack>
                   </Box>
                   <Box flex={2}>
                     <Text fontSize="sm" color={event.bannerStart || event.bannerEnd ? 'fg' : 'fg.muted'}>
@@ -423,7 +491,7 @@ export default function AnnouncementsPage() {
                     </Text>
                   </Box>
                   <Box flex={2}>
-                    {event.product ? (
+                    {sells ? (
                       <Text fontSize="sm" color={event.salesStart || event.salesEnd ? 'fg' : 'fg.muted'}>
                         {formatDateRange(event.salesStart, event.salesEnd)}
                       </Text>
@@ -432,7 +500,7 @@ export default function AnnouncementsPage() {
                     )}
                   </Box>
                   <Box w="80px" textAlign="center">
-                    {event.product ? (
+                    {sells ? (
                       productStats && productStats.qty > 0 ? (
                         <VStack
                           gap={0}
@@ -546,12 +614,12 @@ export default function AnnouncementsPage() {
 
                 <Flex justify="space-between" align="center">
                   <VStack align="start" gap={0}>
-                    <Text fontWeight="700" fontSize="sm">Vendre un billet / produit</Text>
-                    <Text fontSize="xs" color="fg.muted">Ajoute un bouton d&apos;achat rapide sur l&apos;ardoise</Text>
+                    <Text fontWeight="700" fontSize="sm">Vendre des billets</Text>
+                    <Text fontSize="xs" color="fg.muted">Ajoute un bouton d&apos;achat sur l&apos;ardoise</Text>
                   </VStack>
                   <Switch.Root
-                    checked={form.hasProduct}
-                    onCheckedChange={(e) => setField('hasProduct', e.checked)}
+                    checked={form.hasTickets}
+                    onCheckedChange={(e) => setHasTickets(e.checked)}
                     colorPalette="green"
                     size="lg"
                   >
@@ -562,31 +630,37 @@ export default function AnnouncementsPage() {
                   </Switch.Root>
                 </Flex>
 
-                {form.hasProduct && (
+                {form.hasTickets && (
                   <>
-                    <HStack gap={3} align="end">
-                      <Box flex={3}>
-                        <Text fontWeight="700" fontSize="sm" mb={2}>Nom du produit</Text>
-                        <Input
-                          placeholder="ex : Billet souper"
-                          value={form.productName}
-                          onChange={(e) => setField('productName', e.target.value)}
-                          fontSize="sm"
-                        />
-                      </Box>
-                      <Box flex={1}>
-                        <Text fontWeight="700" fontSize="sm" mb={2}>Prix ($)</Text>
-                        <Input
-                          type="number"
-                          step="0.25"
-                          min="0"
-                          placeholder="25.00"
-                          value={form.productPrice}
-                          onChange={(e) => setField('productPrice', e.target.value)}
-                          fontSize="sm"
-                        />
-                      </Box>
-                    </HStack>
+                    <TicketOptionsEditor
+                      options={form.options}
+                      onChange={(options) => setForm((f) => ({ ...f, options }))}
+                      errors={shownTicketErrors?.byOption}
+                      listError={shownTicketErrors?.options}
+                      soldByOption={soldByOption}
+                      removedWithSales={removedWithSales}
+                      onRemoveWithSales={(r) => setRemovedWithSales((prev) => [...prev, r])}
+                    />
+
+                    <Box>
+                      <Text fontWeight="700" fontSize="sm" mb={1}>Maximum par employé</Text>
+                      <Text fontSize="xs" color="fg.muted" mb={2}>
+                        Toutes options confondues, achats précédents inclus. Laisser vide pour illimité.
+                      </Text>
+                      <Input
+                        type="number"
+                        min="1"
+                        step="1"
+                        maxW="140px"
+                        placeholder="Illimité"
+                        value={form.maxPerEmployee}
+                        onChange={(e) => setField('maxPerEmployee', e.target.value)}
+                        fontSize="sm"
+                      />
+                      {shownTicketErrors?.maxPerEmployee && (
+                        <Text fontSize="xs" color="red.500" mt={1} fontWeight="600">{shownTicketErrors.maxPerEmployee}</Text>
+                      )}
+                    </Box>
 
                     <Box>
                       <Text fontWeight="700" fontSize="sm" mb={1}>Période — Vente de billets</Text>
@@ -658,30 +732,61 @@ export default function AnnouncementsPage() {
         </DialogPositioner>
       </DialogRoot>
 
-      {/* Buyers list modal */}
+      {/* Sales breakdown + buyers modal */}
       <DialogRoot
         open={!!buyersTarget}
         onOpenChange={(e) => { if (!e.open) setBuyersTarget(null); }}
         placement="center"
-        size="sm"
+        size="md"
       >
         <DialogBackdrop />
         <DialogPositioner>
           <DialogContent p={6}>
             <DialogHeader pb={2}>
               <DialogTitle fontSize="lg" fontWeight="700">
-                Acheteurs — {buyersTarget?.product?.name}
+                Ventes — {buyersTarget?.title}
               </DialogTitle>
             </DialogHeader>
             <DialogBody py={4}>
+              {buyersStats && (
+                <Box mb={5} borderRadius="lg" border="1px solid" borderColor="border" overflow="hidden">
+                  {byOptionOrder(buyersStats.byOption).map(([optionId, s]) => (
+                    <Flex key={optionId} justify="space-between" px={4} py={2} borderBottom="1px solid" borderColor="border">
+                      <Text fontSize="sm" fontWeight="600">{optionName(optionId)}</Text>
+                      <HStack gap={3}>
+                        <Text fontSize="sm" fontWeight="700">x{s.qty}</Text>
+                        <Text fontSize="xs" color="fg.muted" minW="64px" textAlign="right">{s.revenue.toFixed(2)}$</Text>
+                      </HStack>
+                    </Flex>
+                  ))}
+                  <Flex justify="space-between" px={4} py={2} bg="bg.subtle">
+                    <Text fontSize="sm" fontWeight="800">Total</Text>
+                    <HStack gap={3}>
+                      <Text fontSize="sm" fontWeight="800">x{buyersStats.qty}</Text>
+                      <Text fontSize="xs" fontWeight="700" minW="64px" textAlign="right">{buyersStats.revenue.toFixed(2)}$</Text>
+                    </HStack>
+                  </Flex>
+                </Box>
+              )}
+
+              <Text fontWeight="700" fontSize="sm" mb={2}>Acheteurs</Text>
               {buyersLoading ? (
                 <Text color="fg.muted">Chargement...</Text>
               ) : buyers && buyers.length > 0 ? (
                 <VStack align="stretch" gap={2} maxH="320px" overflowY="auto">
                   {buyers.map((b) => (
-                    <Flex key={b.employeeNumber} justify="space-between" align="center">
-                      <Text fontSize="sm" fontWeight="600">{b.employeeNumber}</Text>
-                      <HStack gap={3}>
+                    <Flex key={b.employeeNumber} justify="space-between" align="center" gap={3}>
+                      <Box minW={0}>
+                        <Text fontSize="sm" fontWeight="600">{b.employeeNumber}</Text>
+                        {(buyersTarget?.options.length ?? 0) > 1 && (
+                          <Text fontSize="xs" color="fg.muted" truncate>
+                            {byOptionOrder(b.byOption)
+                              .map(([optionId, qty]) => `${qty}× ${optionName(optionId)}`)
+                              .join(', ')}
+                          </Text>
+                        )}
+                      </Box>
+                      <HStack gap={3} flexShrink={0}>
                         <Text fontSize="sm" fontWeight="700">x{b.qty}</Text>
                         <Text fontSize="xs" color="fg.muted">{b.revenue.toFixed(2)}$</Text>
                       </HStack>

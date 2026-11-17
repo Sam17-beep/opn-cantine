@@ -248,3 +248,23 @@ describe('useCart scan feedback', () => {
     }
   });
 });
+
+describe('useCart event tickets', () => {
+  it('adds several ticket options at once as attributed lines', async () => {
+    const cart = mountCart();
+
+    await act(async () => {
+      cart().addTickets('e1', [
+        { optionId: 'adult', name: 'Gala – Adulte', price: 25, qty: 2 },
+        { optionId: 'child', name: 'Gala – Enfant', price: 10, qty: 0 },
+        { optionId: 'vege', name: 'Gala – Végé', price: 22.5, qty: 1 },
+      ]);
+    });
+
+    expect(cart().pendingTotal).toBe(72.5);
+    expect(cart().scannedProducts).toEqual([
+      expect.objectContaining({ barcode: '_event_', name: 'Gala – Adulte', qty: 2, eventId: 'e1', optionId: 'adult' }),
+      expect.objectContaining({ barcode: '_event_', name: 'Gala – Végé', qty: 1, eventId: 'e1', optionId: 'vege' }),
+    ]);
+  });
+});

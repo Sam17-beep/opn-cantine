@@ -16,4 +16,7 @@ export interface ScannedProduct {
   qty: number;
   /** Product id resolved at scan time; absent for quick-add pseudo items. */
   productId?: string | null;
+  /** Set on event ticket lines so sales are attributed to the right option. */
+  eventId?: string | null;
+  optionId?: string | null;
 }

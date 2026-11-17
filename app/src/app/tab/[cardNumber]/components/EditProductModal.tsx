@@ -20,6 +20,8 @@ import type { ScannedProduct } from '../types';
 interface EditProductModalProps {
   product: ScannedProduct | null;
   qty: number;
+  /** Upper bound for the quantity, e.g. a per-employee ticket limit. */
+  maxQty?: number;
   onQtyChange: (qty: number) => void;
   onOpenChange: (open: boolean) => void;
   onDelete: () => void;
@@ -29,6 +31,7 @@ interface EditProductModalProps {
 export function EditProductModal({
   product,
   qty,
+  maxQty = Infinity,
   onQtyChange,
   onOpenChange,
   onDelete,
@@ -75,6 +78,7 @@ export function EditProductModal({
                 aria-label="Augmenter la quantité"
                 variant="outline"
                 onClick={() => onQtyChange(qty + 1)}
+                disabled={qty >= maxQty}
                 boxSize="16"
                 fontSize="4xl"
                 fontWeight="800"

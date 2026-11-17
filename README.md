@@ -276,6 +276,25 @@ page and the recap in the confirmation dialog cannot drift apart. The recap
 passes no `onEdit` and is therefore inert: nothing inside the dialog can change
 the cart while the total sitting next to it says otherwise.
 
+## Event tickets
+
+An announcement (admin → Annonces) can sell tickets during its sales period.
+An event has one or more **ticket options** (e.g. Adulte 25$, Enfant 10$), each
+with a name, a price and an optional description, plus an optional **maximum
+per employee** that counts every option and past purchases together.
+
+On the tab screen a single option is a direct quick-add button, as before;
+two or more open a picker with a stepper per option, the live subtotal and how
+many tickets the employee may still take. The limit is enforced in the UI only
+(picker, single button and the edit-quantity dialog); the kiosk is trusted.
+
+Ticket lines keep the `_event_` barcode and also carry `eventId`/`optionId`, so
+stats and buyer lists stay correct when an option is renamed or removed. Lines
+sold before options existed only have a name: events stored with the old single
+`product` are read as one option with id `legacy`, and those lines are matched
+to it by name (`lib/domain/ticket-options.ts`). Editing such an event rewrites
+it as `options` and drops `product`; no migration is needed.
+
 ## Spending leaderboard
 
 The tab screen shows, under the employee number, where that employee ranks on

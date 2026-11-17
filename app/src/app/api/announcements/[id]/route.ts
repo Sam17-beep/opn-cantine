@@ -1,6 +1,8 @@
+import { randomUUID } from 'crypto';
 import { NextRequest, NextResponse } from 'next/server';
 import { announcementRepository } from '@/lib/infrastructure/repositories/announcement.repository.mongo';
 import { verifyAdminRequest, unauthorizedResponse } from '@/lib/infrastructure/auth/admin-token';
+import { validateTicketSale } from '@/lib/domain/ticket-options';
 
 export async function PATCH(
   request: NextRequest,
@@ -10,7 +12,16 @@ export async function PATCH(
 
   const { id } = await params;
   const body = await request.json();
-  const { title, description, bannerStart, bannerEnd, salesStart, salesEnd, product } = body;
+  const { title, description, bannerStart, bannerEnd, salesStart, salesEnd } = body;
+
+  // A body without `options` (e.g. a stale admin page) leaves the ticket sale untouched.
+  const touchesTickets = 'options' in body || 'maxPerEmployee' in body;
+  const tickets = touchesTickets
+    ? validateTicketSale(body, randomUUID)
+    : ({ ok: true, value: {} } as const);
+  if (!tickets.ok) {
+    return NextResponse.json({ error: 'invalid_tickets', errors: tickets.errors }, { status: 400 });
+  }
 
   const start = bannerStart ?? null;
   const end = bannerEnd ?? null;
@@ -26,9 +37,7 @@ export async function PATCH(
     bannerEnd: end,
     salesStart: salesStart ?? null,
     salesEnd: salesEnd ?? null,
-    product: product?.name && product?.price != null
-      ? { name: (product.name as string).trim(), price: parseFloat(product.price) }
-      : null,
+    ...tickets.value,
   });
 
   return updated

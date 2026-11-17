@@ -21,7 +21,11 @@ export function addUnit(
   line: Omit<ScannedProduct, 'lineId' | 'qty'>
 ): ScannedProduct[] {
   const existing = lines.find(
-    (p) => p.barcode === line.barcode && p.name === line.name && p.price === line.price
+    (p) =>
+      p.barcode === line.barcode &&
+      p.name === line.name &&
+      p.price === line.price &&
+      (p.optionId ?? null) === (line.optionId ?? null)
   );
   if (existing) {
     return lines.map((p) => (p.lineId === existing.lineId ? { ...p, qty: p.qty + 1 } : p));
