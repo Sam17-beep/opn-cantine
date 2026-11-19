@@ -332,7 +332,8 @@ products, tickets (`_event_`), coffee (`_cafe_`) or other, using
   Tickets, coffee and other `_` lines never come out of stock, so they never
   move this graph. Manual quantity edits and price changes are not tracked.
 - **Daily sales** are stacked $ bars by category. Hovering a bar shows the
-  number of transactions.
+  number of transactions. Tickets are hidden by default because their rare,
+  large bursts flatten everything else; "Afficher les billets" shows them.
 - **Stat cards:** unpaid tabs, average weekly revenue, all-time revenue per
   category, and average basket (paid transactions only).
 - **Lists:** top 5 stocked products by units over the last 30 days, and ticket
