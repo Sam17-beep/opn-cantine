@@ -56,6 +56,19 @@ describe('revenueByWeek', () => {
     expect(weeks.map((w) => w.amount)).toEqual([100, 0, 0, 50]);
   });
 
+  it('keeps weeks aligned across a daylight-saving change', () => {
+    // Clocks fall back on 2026-11-01 in America/Toronto.
+    const weeks = revenueByWeek([sale('2026-10-19', 10), sale('2026-11-09', 20)], at('2026-11-09'));
+
+    expect(weeks.map((w) => w.weekStart)).toEqual([
+      '2026-10-19',
+      '2026-10-26',
+      '2026-11-02',
+      '2026-11-09',
+    ]);
+    expect(weeks.map((w) => w.amount)).toEqual([10, 0, 0, 20]);
+  });
+
   it('extends the range to the current week even with no recent sales', () => {
     const weeks = revenueByWeek([sale('2026-08-10', 100)], at('2026-08-28'));
 

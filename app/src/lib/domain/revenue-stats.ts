@@ -18,8 +18,6 @@ export interface AverageRevenuePerWeek {
   partial: boolean;
 }
 
-const MS_PER_WEEK = 7 * 24 * 60 * 60 * 1000;
-
 /** Monday 00:00 local time of the week containing `date`. */
 export function startOfWeek(date: Date): Date {
   const start = new Date(date.getFullYear(), date.getMonth(), date.getDate());
@@ -56,10 +54,12 @@ export function revenueByWeek(sales: RevenueSale[], now: Date = new Date()): Wee
   const last = Math.max(startOfWeek(now).getTime(), Math.max(...totals.keys()));
 
   const weeks: WeeklyRevenue[] = [];
-  for (let week = first; week <= last; week += MS_PER_WEEK) {
+  // Step by calendar days, not a fixed 7×24h: across a DST change a week is an
+  // hour shorter or longer, and the keys would stop matching local Mondays.
+  for (const week = new Date(first); week.getTime() <= last; week.setDate(week.getDate() + 7)) {
     weeks.push({
-      weekStart: toKey(new Date(week)),
-      amount: parseFloat((totals.get(week) ?? 0).toFixed(2)),
+      weekStart: toKey(week),
+      amount: parseFloat((totals.get(week.getTime()) ?? 0).toFixed(2)),
     });
   }
   return weeks;
