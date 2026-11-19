@@ -4,6 +4,7 @@ import { addUnit } from '../cart-lines';
 import { logAction } from '@/lib/client/action-log.client';
 import { useBarcodeScanner } from '@/lib/client/useBarcodeScanner';
 import { EVENT_BARCODE } from '@/lib/domain/ticket-options';
+import { COFFEE_BARCODE } from '@/lib/domain/constants';
 
 export interface TicketLine {
   optionId: string;
@@ -147,10 +148,10 @@ export function useCart(
     if (now - lastAddRef.current < 300) return;
     lastAddRef.current = now;
 
-    logAction('quick_add', { barcode: '_cafe_', name: 'Café', price: 1.0 });
+    logAction('quick_add', { barcode: COFFEE_BARCODE, name: 'Café', price: 1.0 });
     setPendingTotal((prev) => prev + 1);
     setScannedProducts((prev) =>
-      addUnit(prev, { barcode: '_cafe_', name: 'Café', price: 1.0 })
+      addUnit(prev, { barcode: COFFEE_BARCODE, name: 'Café', price: 1.0 })
     );
   };
 

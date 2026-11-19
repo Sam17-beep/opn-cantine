@@ -2,6 +2,9 @@
 // box, no employee account / tab involved).
 export const CASH_CARD_NUMBER = '_cash_';
 
+/** Synthetic barcode of the coffee quick-add button; billed, never stocked. */
+export const COFFEE_BARCODE = '_cafe_';
+
 /**
  * Cash sales have no employee behind them, so they record a ledger entry and
  * decrement stock but charge no tab. Everything else about a sale is identical,

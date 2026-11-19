@@ -321,6 +321,23 @@ pointer-inert confetti banner plays for every new pass (no refetch; honours
 Logic lives in `lib/domain/leaderboard.ts` (pure) and
 `LeaderboardApplicationService`.
 
+## Admin dashboard
+
+`/admin/dashboard` reads `GET /api/analytics`. Each sale line is sorted into
+products, tickets (`_event_`), coffee (`_cafe_`) or other, using
+`lib/domain/sales-breakdown.ts`.
+
+- **Inventory value** is rebuilt backward from today's stock value. Each day's
+  restocks are removed and its sales of stocked products are added back.
+  Tickets, coffee and other `_` lines never come out of stock, so they never
+  move this graph. Manual quantity edits and price changes are not tracked.
+- **Daily sales** are stacked $ bars by category. Hovering a bar shows the
+  number of transactions.
+- **Stat cards:** unpaid tabs, average weekly revenue, all-time revenue per
+  category, and average basket (paid transactions only).
+- **Lists:** top 5 stocked products by units over the last 30 days, and ticket
+  revenue per event (attributed the same way as `/api/announcement/stats`).
+
 ## Action log (on-device)
 
 The kiosk keeps a local, append-only trail of what happened on it: login, scan,
