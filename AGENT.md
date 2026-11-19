@@ -29,7 +29,7 @@ The Bell Canteen platform is a comprehensive stock and sales management system t
 - **User balance tracking** and transaction history
 - **Event ticket sales** with multiple options and an optional per-employee limit (see README "Event tickets")
 - **Year-to-date spending leaderboard** — anonymous, per-user rank only (see README "Spending leaderboard")
-- **Analytics and reporting** for business insights
+- **Analytics and reporting** for business insights. On the dashboard, inventory value counts stocked products only, never tickets or coffee (see README "Admin dashboard")
 
 ### Core Principles
 

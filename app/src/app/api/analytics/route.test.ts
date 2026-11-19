@@ -28,16 +28,20 @@ async function callAnalytics() {
   return { status: response.status, body: await response.json() };
 }
 
-async function recordSale(id: string, daysAgo: number, totalAmount: number) {
+async function recordSale(id: string, daysAgo: number, totalAmount: number, barcode = '1') {
   const timestamp = new Date();
   timestamp.setDate(timestamp.getDate() - daysAgo);
   await transactionRepository.insertOnce({
     id,
     cardNumber: '000000000000',
-    items: [{ barcode: '1', name: 'Chips', price: totalAmount, quantity: 1 }],
+    items: [{ barcode, name: 'Line', price: totalAmount, quantity: 1 }],
     totalAmount,
     timestamp,
   });
+}
+
+function inventoryValues(body: { inventoryHistory: { value: number }[] }): number[] {
+  return body.inventoryHistory.map((p) => p.value);
 }
 
 describe('GET /api/analytics', () => {
@@ -87,5 +91,35 @@ describe('GET /api/analytics', () => {
     expect(body).toHaveProperty('inventoryHistory');
     expect(body).toHaveProperty('totalUnpaidTabs');
     expect(body).toHaveProperty('weeklyRevenue');
+    expect(body.revenueSplit).toEqual({ products: 10, tickets: 0, coffee: 0, other: 0 });
+    expect(body.averageBasket).toBe(10);
+    expect(body.topProducts).toEqual([{ name: 'Line', qty: 1, revenue: 10 }]);
+    expect(body.ticketRevenueByEvent).toEqual([]);
+  });
+
+  it.each([
+    ['ticket', '_event_'],
+    ['coffee', '_cafe_'],
+  ])('does not let a %s sale change the inventory value history', async (_label, barcode) => {
+    await seedProduct({ id: 'p1', barcodes: ['1'], name: 'Chips', price: 2, quantity: 5 });
+    await recordSale('sale-0006', 5, 4);
+    const baseline = inventoryValues((await callAnalytics()).body);
+
+    await recordSale('sale-0007', 2, 300, barcode);
+    const { body } = await callAnalytics();
+
+    // The extra day appears, but carries the same value as its neighbours.
+    expect([...new Set(inventoryValues(body))]).toEqual([...new Set(baseline)]);
+    expect(body.transactionsByDay.at(-1)).toMatchObject({ products: 0, amount: 300 });
+  });
+
+  it('adds product sales back into past inventory value', async () => {
+    await seedProduct({ id: 'p1', barcodes: ['1'], name: 'Chips', price: 2, quantity: 5 });
+    await recordSale('sale-0008', 5, 4);
+    await recordSale('sale-0009', 2, 6);
+
+    const { body } = await callAnalytics();
+
+    expect(inventoryValues(body)).toEqual([16, 10, 10]);
   });
 });
